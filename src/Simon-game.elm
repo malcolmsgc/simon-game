@@ -1,8 +1,8 @@
 module SimonsGame exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+-- import Html.Attributes exposing (..)
+-- import Html.Events exposing (..)
 
 
 -- MODEL
@@ -13,6 +13,11 @@ type alias Model =
     , strictMode : Bool
     , sequence : List Sound
     }
+
+
+initModel : Model
+initModel =
+    Model "This is working" False []
 
 
 type alias Sound =
@@ -27,8 +32,52 @@ type alias Quad =
     }
 
 
+init : ( Model, Cmd msg )
+init =
+    ( initModel, Cmd.none )
+
+
 
 -- UPDATE
+
+
+type Msg
+    = None
+
+
+update : Msg -> Model -> ( Model, Cmd msg )
+update msg model =
+    case msg of
+        None ->
+            ( model, Cmd.none )
+
+
+
 -- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    text model.test
+
+
+
 -- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub msg
+subscriptions model =
+    Sub.none
+
+
+
 -- PROGRAM
+
+main : Program Never Model Msg
+main =
+    Html.program
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }

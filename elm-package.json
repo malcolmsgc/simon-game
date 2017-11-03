@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Simon game - Free Code Camp challenge",
-    "repository": "https://github.com/malcolmsgc/simon-game",
+    "repository": "https://github.com/malcolmsgc/simon-game.git",
     "license": "BSD3",
     "source-directories": [
         "."
