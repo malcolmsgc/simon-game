@@ -4,8 +4,8 @@
   "description": "Simple game - user copies given rhythms",
   "main": "index.js",
   "scripts": {
-    "sass": "node-sass-chokidar --watch src/scss/app.scss -o src/css/app.css",
-    "build": "webpack -p",
+    "sass": "node-sass --watch src/scss/app.scss -o src/css/app.css",
+    "build": "webpack",
     "dvlp": "webpack-dev-server --port 3000",
     "postinstall": "npm rebuild node-sass && npm rebuild elm"
   },
@@ -13,6 +13,7 @@
   "author": "Malcolm Cumming <bemjogar@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "clean-webpack-plugin": "^0.1.17",
     "css-loader": "^0.28.7",
     "elm-webpack-loader": "^4.4.0",
     "extract-text-webpack-plugin": "^3.0.2",

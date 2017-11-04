@@ -1,23 +1,21 @@
-var path = require("path");
-var ExtractTextPlugin = require("extract-text-webpack-plugin");
+const path = require("path");
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
+const CleanWebpackPlugin = require('clean-webpack-plugin')
 
-var extractSass = new ExtractTextPlugin({
-  filename: "[name].[contenthash].css",
+
+const extractSass = new ExtractTextPlugin({
+  filename: "app.css",
   disable: process.env.NODE_ENV === "development"
 });
 
-var elmSource = path.resolve(__dirname + '/src');
+// var elmSource = path.resolve(__dirname + '/src');
 
 module.exports = {
-  entry: {
-    app: [
-      './src/index.js'
-    ]
-  },
+  entry: './src/index.js',
 
   output: {
     path: path.resolve(__dirname + '/dist'),
-    filename: '[name].js',
+    filename: 'app.js',
   },
 
   module: {
@@ -25,11 +23,7 @@ module.exports = {
       {
         test: /\.scss$/,
         use: extractSass.extract({
-            use: [{
-                loader: "css-loader"
-            }, {
-                loader: "sass-loader"
-            }],
+            use: ["css-loader", "sass-loader"],
             // use style-loader in development
             fallback: "style-loader"
         })
@@ -52,7 +46,8 @@ module.exports = {
   },
 
   plugins: [
-    extractSass
+    extractSass,
+    new CleanWebpackPlugin(path.resolve(__dirname + '/dist'))
 ],
 
   devServer: {
