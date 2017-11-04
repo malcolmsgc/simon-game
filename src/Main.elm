@@ -1,10 +1,10 @@
-module SimonsGame exposing (..)
+module Main exposing (..)
 
 import Html exposing (..)
--- import Html.Attributes exposing (..)
+import Html.Attributes exposing (..)
+
+
 -- import Html.Events exposing (..)
-
-
 -- MODEL
 
 
@@ -58,7 +58,18 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    text model.test
+    div [ class "app-wrapper" ]
+        [ section [ class "game" ] (touchpads model)
+        ]
+
+
+touchpads : Model -> List (Html Msg)
+touchpads model =
+    [ div [ class "touchpad", id "1" ] [ text "1" ]
+    , div [ class "touchpad", id "2" ] [ text "2" ]
+    , div [ class "touchpad", id "3" ] [ text "3" ]
+    , div [ class "touchpad", id "4" ] [ text "4" ]
+    ]
 
 
 
@@ -72,6 +83,7 @@ subscriptions model =
 
 
 -- PROGRAM
+
 
 main : Program Never Model Msg
 main =

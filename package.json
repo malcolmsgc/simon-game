@@ -1,0 +1,28 @@
+{
+  "name": "simon-game",
+  "version": "1.0.0",
+  "description": "Simple game - user copies given rhythms",
+  "main": "index.js",
+  "scripts": {
+    "sass": "node-sass-chokidar --watch src/scss/app.scss -o src/css/app.css",
+    "build": "webpack -p",
+    "dvlp": "webpack-dev-server --port 3000",
+    "postinstall": "npm rebuild node-sass && npm rebuild elm"
+  },
+  "repository": "git@github.com:malcolmsgc/simon-game.git",
+  "author": "Malcolm Cumming <bemjogar@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "css-loader": "^0.28.7",
+    "elm-webpack-loader": "^4.4.0",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "file-loader": "^1.1.5",
+    "node-sass": "^4.6.0",
+    "sass-loader": "^6.0.6",
+    "style-loader": "^0.19.0",
+    "url-loader": "^0.6.2",
+    "webpack": "^3.8.1",
+    "webpack-dev-server": "^2.9.4"
+  },
+  "dependencies": {}
+}
