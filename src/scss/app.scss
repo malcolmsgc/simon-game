@@ -1,20 +1,47 @@
 @import "./vars";
 
+body, main {
+    margin: 0;
+}
+
+
+
+.app-wrapper {
+    font-size: 10px;
+    height: 100vh;
+    display: grid;
+    justify-items: stretch;
+    justify-content: stretch;
+    grid-template-columns: 1fr 40em 1fr;
+    grid-template-rows: 1fr 0.25fr 40em 2fr;
+    grid-template-areas: 
+     "header header header"
+     ". . ."
+     ". game ."
+     ". . ."
+}
+
 .game {
+    // GRID ITEM
+    grid-area: game;
+    // GRID CONTAINER
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    border: 1px solid blue;
     background: pink;
 }
 
 .touchpad {
-    #1 {
-        background-color: $touchpad-color1
-    }
-    #2 {
-        background-color: $touchpad-color2
-    }
-    #3 {
-        background-color: $touchpad-color3
-    }
-    #4 {
-        background-color: $touchpad-color4
-    }
+    border: 5px solid rgb(0, 0, 8);
+    @each $position, $color in  (top-left, $touchpad-color1),
+                                (top-right, $touchpad-color2),
+                                (bottom-left, $touchpad-color3),
+                                (bottom-right, $touchpad-color4)
+    {
+            &##{$position} {
+            background-color: $color;
+            border-#{$position}-radius: 100%;
+            }   
+    }     
 }

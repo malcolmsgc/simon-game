@@ -65,10 +65,10 @@ view model =
 
 touchpads : Model -> List (Html Msg)
 touchpads model =
-    [ div [ class "touchpad", id "1" ] [ text "1" ]
-    , div [ class "touchpad", id "2" ] [ text "2" ]
-    , div [ class "touchpad", id "3" ] [ text "3" ]
-    , div [ class "touchpad", id "4" ] [ text "4" ]
+    [ div [ class "touchpad top-row", id "top-left" ] [ text "1" ]
+    , div [ class "touchpad top-row", id "top-right" ] [ text "2" ]
+    , div [ class "touchpad bottom-row", id "bottom-left" ] [ text "3" ]
+    , div [ class "touchpad bottom-row", id "bottom-right" ] [ text "4" ]
     ]
 
 
