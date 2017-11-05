@@ -28,7 +28,13 @@ module.exports = {
             fallback: "style-loader"
         })
       },
-      
+      {
+        test: /\.jpe?g$/,
+        loader: 'file-loader',
+        options: {
+          name: '[path][name].[hash].[ext]',
+        },
+      },
       {
         test:    /\.html$/,
         exclude: /node_modules/,

@@ -1,10 +1,12 @@
 @import "./vars";
 
-body, main {
+body, #main {
     margin: 0;
 }
 
-
+#main {
+    background: no-repeat center/cover url($app-canvas) #351919;
+}
 
 .app-wrapper {
     font-size: 10px;
@@ -13,7 +15,7 @@ body, main {
     justify-items: stretch;
     justify-content: stretch;
     grid-template-columns: 1fr 40em 1fr;
-    grid-template-rows: 1fr 0.25fr 40em 2fr;
+    grid-template-rows: 1fr 0fr 40em 2fr;
     grid-template-areas: 
      "header header header"
      ". . ."
@@ -26,22 +28,34 @@ body, main {
     grid-area: game;
     // GRID CONTAINER
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    border: 1px solid blue;
-    background: pink;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
+    // border: 1px solid blue;
+    // background: pink;
 }
 
 .touchpad {
     border: 5px solid rgb(0, 0, 8);
-    @each $position, $color in  (top-left, $touchpad-color1),
-                                (top-right, $touchpad-color2),
-                                (bottom-left, $touchpad-color3),
-                                (bottom-right, $touchpad-color4)
+    @each $position, $color, $grid-col, $grid-row in 
+        (top-left, $touchpad-color1, 1 unquote("/") 3, 1 unquote("/") 3),
+        (top-right, $touchpad-color2, 3 unquote("/") 5, 1 unquote("/") 3),
+        (bottom-left, $touchpad-color3, 1 unquote("/") 3, 3 unquote("/") 5),
+        (bottom-right, $touchpad-color4, 3 unquote("/") 5, 3 unquote("/") 5)
     {
             &##{$position} {
             background-color: $color;
+            grid-column: $grid-col;
+            grid-row: $grid-row;
+            z-index: 1;
             border-#{$position}-radius: 100%;
             }   
-    }     
+    }   
 }
+        
+.controls {
+            z-index: 2;
+            background-color: rgb(117, 117, 13);
+            grid-column: 2 / 4;
+            grid-row: 2 / 4;
+            border-radius: 100%;
+        }  

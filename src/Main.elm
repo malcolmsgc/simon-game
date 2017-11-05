@@ -65,13 +65,16 @@ view model =
 
 touchpads : Model -> List (Html Msg)
 touchpads model =
-    [ div [ class "touchpad top-row", id "top-left" ] [ text "1" ]
-    , div [ class "touchpad top-row", id "top-right" ] [ text "2" ]
-    , div [ class "touchpad bottom-row", id "bottom-left" ] [ text "3" ]
-    , div [ class "touchpad bottom-row", id "bottom-right" ] [ text "4" ]
+    [ div [ class "touchpad top-row", id "top-left" ] []
+    , div [ class "touchpad top-row", id "top-right" ] []
+    , div [ class "controls" ] [ controls model ]
+    , div [ class "touchpad bottom-row", id "bottom-left" ] []
+    , div [ class "touchpad bottom-row", id "bottom-right" ] []
     ]
 
-
+controls : Model -> Html Msg
+controls model =
+    text model.test
 
 -- SUBSCRIPTIONS
 
