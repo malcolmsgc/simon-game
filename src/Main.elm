@@ -70,6 +70,11 @@ view model =
     div [ class "app-wrapper" ]
         [ h1 [ class "header" ] [ text "Simon Game" ]
         , section [ class "game" ] (touchpads model)
+        , footer []
+            [ a [ href "https://github.com/malcolmsgc/simon-game" ] [ text "OSS project " ]
+            , text "by "
+            , a [ href "https://www.linkedin.com/in/malcolmcumming/" ] [ text "Malcolm Cumming" ]
+            ]
         ]
 
 
@@ -87,10 +92,29 @@ controls : Model -> Html Msg
 controls model =
     let
         steps =
-            20
+            Nothing
+
+        stepCount =
+            case steps of
+                Just int ->
+                    (toString int)
+
+                Nothing ->
+                    "--"
+
+        stepUnit =
+            case steps of
+                Just int ->
+                    if int <= 1 then
+                        "step"
+                    else
+                        "steps"
+
+                Nothing ->
+                    "press start"
     in
         div [ class "controls" ]
-            [ div [ class "step-count" ] [ text (toString steps) ]
+            [ div [ class "step-count" ] [ text stepCount, span [] [ text stepUnit ] ]
             , label []
                 [ text "start"
                 , button [ type_ "button", name "start", onClick StartGame ] []
