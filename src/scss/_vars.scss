@@ -12,7 +12,7 @@ $start-btn: #ff0000;
 $strict-btn: #faa200;
 @mixin btn ($base-col) {
     background-color: $base-col;
-    background: radial-gradient(lighten($base-col, 15%) 70%, $base-col 30%);
+    background: radial-gradient(lighten($base-col, 18%) 65%, $base-col 35%);
     border-color: lighten($base-col, 20%)
 }
 
