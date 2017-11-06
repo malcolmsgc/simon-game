@@ -10,17 +10,23 @@ body, #main {
 
 .app-wrapper {
     font-size: 10px;
-    height: 100vh;
+    min-height: 100vh;
     display: grid;
     justify-items: stretch;
     justify-content: stretch;
     grid-template-columns: 1fr 40em 1fr;
-    grid-template-rows: 1fr 0fr 40em 2fr;
+    grid-template-rows: 0.1fr 40em 1fr;
     grid-template-areas: 
      "header header header"
-     ". . ."
      ". game ."
-     ". . ."
+     ". . .";
+}
+
+.header {
+    grid-area: header;
+    justify-self: center;
+    @include font($header-font, 7, em, $header-color);
+    margin: 1.5rem 0 2rem;
 }
 
 .game {
@@ -35,7 +41,7 @@ body, #main {
 }
 
 .touchpad {
-    border: 5px solid rgb(0, 0, 8);
+    border: 5px solid rgba(8, 226, 190, 0.472);
     @each $position, $color, $grid-col, $grid-row in 
         (top-left, $touchpad-color1, 1 unquote("/") 3, 1 unquote("/") 3),
         (top-right, $touchpad-color2, 3 unquote("/") 5, 1 unquote("/") 3),
@@ -54,8 +60,25 @@ body, #main {
         
 .controls {
             z-index: 2;
-            background-color: rgb(117, 117, 13);
+            background-color: $control-bg-color;
             grid-column: 2 / 4;
             grid-row: 2 / 4;
             border-radius: 100%;
+            @include font($step-count-font, 4, em, #fff);
+            .step-count {
+                background-color: #351919;
+            }
+            label {
+                @include font($label-font, 1, rem, rgb(0, 0, 0));
+            }
+            button {
+                padding: 2em;
+                border-radius: 100%;
+                &[name=start] {
+                    @include btn ($start-btn);
+                }
+                &[name=strict] {
+                    @include btn ($strict-btn);
+                }
+            }
         }  

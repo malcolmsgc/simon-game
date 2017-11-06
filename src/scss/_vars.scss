@@ -1,10 +1,36 @@
-// @import '/Users/malcolm/Dev/Projects/Simon Game/src/assets/target-background-1920.jpeg';
+@import url('https://fonts.googleapis.com/css?family=Monoton|Orbitron');
 
+
+// COLOURS
+$header-color: #35191a;
 $touchpad-color1 : rgb(18, 18, 230);
 $touchpad-color2 : rgb(253, 253, 63);
 $touchpad-color3 : rgb(216, 27, 27);
 $touchpad-color4 : rgb(47, 218, 47);
+$control-bg-color: #527f62;
+$start-btn: #ff0000;
+$strict-btn: #faa200;
+@mixin btn ($base-col) {
+    background-color: $base-col;
+    background: radial-gradient(lighten($base-col, 15%) 70%, $base-col 30%);
+    border-color: lighten($base-col, 20%)
+}
 
-$app-canvas: '../assets/target-background-1920.jpeg';
+
+// FONTS
+@mixin font ($family, $size, $unit, $colour : #000) {
+    font-family: $family;
+    font-size: #{$size}#{$unit};
+    color: $colour;
+}
+
+$step-count-font: 'Orbitron', sans-serif;
+$label-font: Arial;
+$header-font: 'Monoton', monospace;
+
+
+// IMAGES
+
+$app-canvas: '../assets/circuit-background.jpeg';
 
     
