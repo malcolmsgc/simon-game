@@ -45,7 +45,7 @@ init =
 type Msg
     = None
     | StartGame
-    | ToggleStrict
+    | ToggleStrict Bool
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -57,8 +57,8 @@ update msg model =
         StartGame ->
             ( model, Cmd.none )
 
-        ToggleStrict ->
-            ( model, Cmd.none )
+        ToggleStrict isStrict ->
+            ( {model | strictMode = (not isStrict)}, Cmd.none )
 
 
 
@@ -112,6 +112,7 @@ controls model =
 
                 Nothing ->
                     "press start"
+        
     in
         div [ class "controls" ]
             [ div [ class "step-count" ] [ text stepCount, span [] [ text stepUnit ] ]
@@ -119,9 +120,9 @@ controls model =
                 [ text "start"
                 , button [ type_ "button", name "start", onClick StartGame ] []
                 ]
-            , label []
+            , label [ classList [("strict", model.strictMode)] ]
                 [ text "strict"
-                , button [ type_ "button", name "strict", onClick ToggleStrict ] []
+                , button [ type_ "button", name "strict", onClick (ToggleStrict model.strictMode) ] []
                 ]
             ]
 
