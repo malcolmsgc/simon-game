@@ -1,13 +1,14 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on)
 import Random
 import Time exposing (Time, millisecond)
+import Task
+import Debug exposing (log)
 
-
--- import Html.Events exposing (..)
+-- import Process
 -- MODEL
 
 
@@ -51,9 +52,9 @@ gameSounds =
     ]
 
 
-init : ( Model, Cmd msg )
+init : ( Model, Cmd Msg )
 init =
-    ( initModel, Cmd.none )
+    ( initModel, generateSequence )
 
 
 
@@ -63,11 +64,13 @@ init =
 type Msg
     = None
     | NewGame
+    | GenerateSequence
+    | PopulateSequence (List Int)
     | ToggleStrict Bool
-    | Tick Time
-    | SelectSound
+      -- | Tick Time
+    | SelectSound Time
     | StaggerSound
-    | PlaySound Int
+    | PlaySound Float
     | AddToSequence Int
 
 
@@ -79,54 +82,90 @@ update msg model =
 
         NewGame ->
             let
-                sequenceCount =
-                    List.length model.sequence
+                count =
+                    List.length model.userSequence
+
+                firstRun =
+                    not model.gameActive
 
                 newModel =
-                    if sequenceCount > 0 then
+                    if count > 0 then
                         { model | sequence = [], userSequence = [], allowInput = False }
                     else
                         { model | gameActive = True }
             in
-                ( newModel, Cmd.none )
+                -- Needs to generate new sequence then start playback
+                ( newModel, startGame firstRun )
+
+        GenerateSequence ->
+            ( model, generateSequence )
+
+        PopulateSequence sequenceList ->
+            ( { model | sequence = sequenceList }, Cmd.none )
 
         ToggleStrict isStrict ->
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
-        Tick timeNow ->
-            ( model, Cmd.none )
-            -- time model timeNow
-
-        SelectSound ->
+        -- Tick timeNow ->
+        --     update (SelectSound timeNow) model
+        SelectSound time ->
             ( model, Random.generate AddToSequence (Random.int 1 4) )
 
         AddToSequence id ->
             ( { model | sequence = id :: model.sequence }, Cmd.none )
 
         StaggerSound ->
-            ( model, Random.generate PlaySound (Random.int 1 4) )
-        
+            ( model, Random.generate PlaySound (Random.float 0 1) )
+
         PlaySound multiplier ->
             playSound model multiplier
 
+
+
+-- TASKS
+
+
+generateSequence : Cmd Msg
+generateSequence =
+    Random.list 20 (Random.int 1 4)
+        |> Random.generate PopulateSequence
+
+
+startSequence : Cmd Msg
 startSequence =
     Cmd.none
 
+startGame : Bool -> Cmd Msg
+startGame firstRun =
+    let
+        cmds =
+            if firstRun then
+                startSequence
+            else
+                generateSequence
+                    -- |> Task.andThen (\ -> startSequence)
+    in
+        cmds
+
+
 time : Model -> Time -> Model
 time model timeNow =
- case model.nextSoundAt of
-    Nothing ->
-        model
-    Just playAt ->
-        if timeNow <= playAt then
+    case model.nextSoundAt of
+        Nothing ->
             model
-        else
-            model
-        
+
+        Just playAt ->
+            if timeNow <= playAt then
+                model
+            else
+                model
+
 
 playSound model multiplier =
     -- if model.
- ( model , Cmd.none )
+    ( model, Cmd.none )
+
+
 
 -- VIEW
 
@@ -179,12 +218,26 @@ controls model =
 
                 Nothing ->
                     "press start"
+
+        startBtnText =
+            case model.gameActive of
+                True ->
+                    "reset"
+
+                False ->
+                    "start"
     in
         div [ class "controls" ]
             [ div [ class "step-count" ] [ text stepCount, span [] [ text stepUnit ] ]
             , label []
-                [ text "start"
-                , button [ type_ "button", name "start", onClick NewGame ] []
+                [ text startBtnText
+                , button
+                    [ type_ "button"
+                    , name "start"
+                    , classList [ ( "active", model.gameActive ) ]
+                    , onClick NewGame
+                    ]
+                    []
                 ]
             , label []
                 [ text "strict"
@@ -198,22 +251,29 @@ controls model =
                 ]
             ]
 
+
 sounds : List Sound -> Html Msg
 sounds soundList =
-    soundList 
-    |> List.map (\sound -> audio [ src sound.url, type_ "audio/mpeg", id ("sound" ++ toString sound.id) ] [])
-    |> div [ id "media" ]
+    soundList
+        |> List.map
+            (\sound ->
+                audio [ src sound.url, type_ "audio/mpeg", id ("sound" ++ toString sound.id), preload "auto" ] []
+            )
+        |> div [ id "media" ]
+
+
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.gameActive && not model.allowInput then
-    Sub.batch
-        [  Time.every (250 * millisecond) Tick
-        ]
-    else Sub.none
+    -- if model.gameActive && not model.allowInput then
+    --     Sub.batch
+    --         [ Time.every (250 * millisecond) Tick
+    --         ]
+    -- else
+    Sub.none
 
 
 

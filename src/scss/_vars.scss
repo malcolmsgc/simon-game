@@ -8,7 +8,8 @@ $touchpad-color2 : rgb(253, 253, 63);
 $touchpad-color3 : rgb(216, 27, 27);
 $touchpad-color4 : rgb(47, 218, 47);
 $control-bg-color: #527f62;
-$start-btn: #ff0000;
+$start-btn-off: #ff0000;
+$start-btn-on: #fd0404;
 $strict-btn-off: #faa200;
 $strict-btn-on: #fa7900;
 @mixin btn ($base-col) {
