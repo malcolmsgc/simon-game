@@ -30,9 +30,10 @@ type alias Model =
 type alias Sequence =
     Array Int
 
+
 emptyArray : Sequence
-emptyArray = 
- Array.fromList []
+emptyArray =
+    Array.fromList []
 
 
 initModel : Model
@@ -109,8 +110,7 @@ update msg model =
                 sequenceArr =
                     Array.fromList sequenceList
             in
-                
-            ( { model | sequence = sequenceArr }, startSequence (Just 0) sequenceArr )
+                ( { model | sequence = sequenceArr }, startSequence model.count sequenceArr )
 
         UpdateCount ->
             case model.count of
@@ -141,7 +141,29 @@ update msg model =
 
 
 
+-- HELPER FUNCTIONS
+
+
+countToIndex : Maybe Int -> Int
+countToIndex count =
+    let
+        index =
+            case count of
+                Just 0 ->
+                    0
+
+                Just int ->
+                    int - 1
+
+                Nothing ->
+                    -10
+    in
+        index
+
+
+
 -- TASKS
+-- Generates a List which is then converted to an Array in PopulateSequence
 
 
 generateSequence : Model -> Cmd Msg
@@ -162,15 +184,17 @@ startSequence count sequence =
     -- TO DO : Only have one id here as a test. Needs more logic to play full pattern
     let
         index =
-         case count of
-            Just int ->
-             int
-            Nothing ->
-            -1
-        currentId =
+            countToIndex count
+
+        audioId =
             Array.get index sequence
     in
-        playSound 1
+        case audioId of
+            Just id ->
+                playSound id
+
+            Nothing ->
+                Cmd.none
 
 
 startGame : Bool -> Cmd Msg
