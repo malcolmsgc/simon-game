@@ -5,7 +5,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on)
 import Random
 import Time exposing (Time, millisecond)
-import Task
+import Task 
+import Array exposing (Array)
 import Debug exposing (log)
 
 
@@ -91,7 +92,7 @@ update msg model =
                     if currentCount > 0 then
                         { model | sequence = [], userSequence = [], count = Just 1, allowInput = False }
                     else
-                        { model | gameActive = True }
+                        { model | gameActive = True, count = Just 1 }
             in
                 ( newModel, generateSequence newModel )
 
@@ -131,7 +132,7 @@ update msg model =
 
 
 generateSequence : Model -> Cmd Msg
-generateSequence { sequence } =
+generateSequence { sequence, count } =
     if
         sequence
             |> List.isEmpty
@@ -140,12 +141,17 @@ generateSequence { sequence } =
             |> Random.generate PopulateSequence
     else
         -- if sequence exists go straight to playback of first pattern
-        startSequence
+        startSequence count sequence
 
 
-startSequence : Cmd Msg
-startSequence =
+startSequence : Maybe Int -> List Int -> Cmd Msg
+startSequence count sequence =
     -- TO DO : Only have one id here as a test. Needs more logic to play full pattern
+    let
+        currentId = 
+            List.take count sequence
+    in
+        
     playSound 1
 
 
