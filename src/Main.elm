@@ -8,6 +8,7 @@ import Time exposing (Time, millisecond)
 import Task
 import Debug exposing (log)
 
+
 -- import Process
 -- MODEL
 
@@ -20,7 +21,8 @@ type alias Model =
     , gameSounds : List Sound
     , sequence : List Int
     , userSequence : List Int
-    , nextSoundAt : Maybe Time
+    , count : Maybe Int
+    , delayFor : Maybe Time
     }
 
 
@@ -33,7 +35,8 @@ initModel =
     , gameSounds = gameSounds
     , sequence = []
     , userSequence = []
-    , nextSoundAt = Nothing
+    , count = Nothing
+    , delayFor = Nothing
     }
 
 
@@ -54,7 +57,7 @@ gameSounds =
 
 init : ( Model, Cmd Msg )
 init =
-    ( initModel, generateSequence )
+    ( initModel, Cmd.none )
 
 
 
@@ -64,14 +67,13 @@ init =
 type Msg
     = None
     | NewGame
-    | GenerateSequence
+    | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
-      -- | Tick Time
-    | SelectSound Time
     | StaggerSound
-    | PlaySound Float
-    | AddToSequence Int
+    | PlaySound Int
+    | UserEntries Int
+    | NextPlaybackDelay Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -82,91 +84,86 @@ update msg model =
 
         NewGame ->
             let
-                count =
+                currentCount =
                     List.length model.userSequence
 
-                firstRun =
-                    not model.gameActive
-
                 newModel =
-                    if count > 0 then
-                        { model | sequence = [], userSequence = [], allowInput = False }
+                    if currentCount > 0 then
+                        { model | sequence = [], userSequence = [], count = Just 1, allowInput = False }
                     else
                         { model | gameActive = True }
             in
-                -- Needs to generate new sequence then start playback
-                ( newModel, startGame firstRun )
-
-        GenerateSequence ->
-            ( model, generateSequence )
+                ( newModel, generateSequence newModel )
 
         PopulateSequence sequenceList ->
-            ( { model | sequence = sequenceList }, Cmd.none )
+                ( { model | sequence = sequenceList }, startSequence )
+
+        UpdateCount ->
+            case model.count of
+                Just int ->
+                    let
+                        newCount =
+                            int + 1
+                    in
+                        ( { model | count = Just newCount }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         ToggleStrict isStrict ->
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
-        -- Tick timeNow ->
-        --     update (SelectSound timeNow) model
-        SelectSound time ->
-            ( model, Random.generate AddToSequence (Random.int 1 4) )
-
-        AddToSequence id ->
-            ( { model | sequence = id :: model.sequence }, Cmd.none )
+        UserEntries id ->
+            ( { model | userSequence = model.userSequence ++ [ id ] }, Cmd.none )
 
         StaggerSound ->
-            ( model, Random.generate PlaySound (Random.float 0 1) )
+            ( model, Random.generate NextPlaybackDelay (Random.float 0 1.5) )
 
-        PlaySound multiplier ->
-            playSound model multiplier
+        NextPlaybackDelay delay ->
+            ( { model | delayFor = (Just delay) }, Cmd.none )
+
+        PlaySound id ->
+            ( model, Cmd.none )
 
 
 
 -- TASKS
 
 
-generateSequence : Cmd Msg
-generateSequence =
-    Random.list 20 (Random.int 1 4)
-        |> Random.generate PopulateSequence
+generateSequence : Model -> Cmd Msg
+generateSequence { sequence } =
+    if
+        sequence
+            |> List.isEmpty
+    then
+        Random.list 20 (Random.int 1 4)
+            |> Random.generate PopulateSequence
+    else
+        -- if sequence exists go straight to playback of first pattern
+        startSequence
 
 
 startSequence : Cmd Msg
 startSequence =
-    Cmd.none
+    -- TO DO : Only have one id here as a test. Needs more logic to play full pattern
+    playSound 1
+
 
 startGame : Bool -> Cmd Msg
 startGame firstRun =
-    let
-        cmds =
-            if firstRun then
-                startSequence
-            else
-                generateSequence
-                    -- |> Task.andThen (\ -> startSequence)
-    in
-        cmds
-
-
-time : Model -> Time -> Model
-time model timeNow =
-    case model.nextSoundAt of
-        Nothing ->
-            model
-
-        Just playAt ->
-            if timeNow <= playAt then
-                model
-            else
-                model
-
-
-playSound model multiplier =
-    -- if model.
-    ( model, Cmd.none )
+    Cmd.none
 
 
 
+--     let
+--         cmds =
+--             if firstRun then
+--                 startSequence
+--             else
+--                 Task.succeed generateSequence
+--                     |> Task.perform startSequence
+--     in
+--         cmds
 -- VIEW
 
 
@@ -195,13 +192,10 @@ touchpads model =
 
 
 controls : Model -> Html Msg
-controls model =
+controls { count, gameActive, strictMode } =
     let
-        steps =
-            Nothing
-
         stepCount =
-            case steps of
+            case count of
                 Just int ->
                     (toString int)
 
@@ -209,7 +203,7 @@ controls model =
                     "--"
 
         stepUnit =
-            case steps of
+            case count of
                 Just int ->
                     if int <= 1 then
                         "step"
@@ -220,7 +214,7 @@ controls model =
                     "press start"
 
         startBtnText =
-            case model.gameActive of
+            case gameActive of
                 True ->
                     "reset"
 
@@ -234,7 +228,7 @@ controls model =
                 , button
                     [ type_ "button"
                     , name "start"
-                    , classList [ ( "active", model.gameActive ) ]
+                    , classList [ ( "active", gameActive ) ]
                     , onClick NewGame
                     ]
                     []
@@ -244,8 +238,8 @@ controls model =
                 , button
                     [ type_ "button"
                     , name "strict"
-                    , classList [ ( "strict", model.strictMode ) ]
-                    , onClick (ToggleStrict model.strictMode)
+                    , classList [ ( "strict", strictMode ) ]
+                    , onClick (ToggleStrict strictMode)
                     ]
                     []
                 ]
@@ -274,6 +268,14 @@ subscriptions model =
     --         ]
     -- else
     Sub.none
+
+
+
+-- PORTS
+-- pass id through to JS, which will be used to form the node id, which can be used to select the node
+
+
+port playSound : Int -> Cmd msg
 
 
 
