@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on)
 import Random
 import Time exposing (Time, millisecond)
-import Task 
+import Task
 import Array exposing (Array)
 import Debug exposing (log)
 
@@ -20,11 +20,19 @@ type alias Model =
     , allowInput : Bool
     , strictMode : Bool
     , gameSounds : List Sound
-    , sequence : List Int
-    , userSequence : List Int
+    , sequence : Sequence
+    , userSequence : Sequence
     , count : Maybe Int
     , delayFor : Maybe Time
     }
+
+
+type alias Sequence =
+    Array Int
+
+emptyArray : Sequence
+emptyArray = 
+ Array.fromList []
 
 
 initModel : Model
@@ -34,8 +42,8 @@ initModel =
     , allowInput = False
     , strictMode = False
     , gameSounds = gameSounds
-    , sequence = []
-    , userSequence = []
+    , sequence = emptyArray
+    , userSequence = emptyArray
     , count = Nothing
     , delayFor = Nothing
     }
@@ -86,18 +94,23 @@ update msg model =
         NewGame ->
             let
                 currentCount =
-                    List.length model.userSequence
+                    Array.length model.userSequence
 
                 newModel =
                     if currentCount > 0 then
-                        { model | sequence = [], userSequence = [], count = Just 1, allowInput = False }
+                        { model | sequence = emptyArray, userSequence = emptyArray, count = Just 1, allowInput = False }
                     else
                         { model | gameActive = True, count = Just 1 }
             in
                 ( newModel, generateSequence newModel )
 
         PopulateSequence sequenceList ->
-                ( { model | sequence = sequenceList }, startSequence )
+            let
+                sequenceArr =
+                    Array.fromList sequenceList
+            in
+                
+            ( { model | sequence = sequenceArr }, startSequence (Just 0) sequenceArr )
 
         UpdateCount ->
             case model.count of
@@ -115,7 +128,7 @@ update msg model =
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
         UserEntries id ->
-            ( { model | userSequence = model.userSequence ++ [ id ] }, Cmd.none )
+            ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
 
         StaggerSound ->
             ( model, Random.generate NextPlaybackDelay (Random.float 0 1.5) )
@@ -135,7 +148,7 @@ generateSequence : Model -> Cmd Msg
 generateSequence { sequence, count } =
     if
         sequence
-            |> List.isEmpty
+            |> Array.isEmpty
     then
         Random.list 20 (Random.int 1 4)
             |> Random.generate PopulateSequence
@@ -144,15 +157,20 @@ generateSequence { sequence, count } =
         startSequence count sequence
 
 
-startSequence : Maybe Int -> List Int -> Cmd Msg
+startSequence : Maybe Int -> Sequence -> Cmd Msg
 startSequence count sequence =
     -- TO DO : Only have one id here as a test. Needs more logic to play full pattern
     let
-        currentId = 
-            List.take count sequence
+        index =
+         case count of
+            Just int ->
+             int
+            Nothing ->
+            -1
+        currentId =
+            Array.get index sequence
     in
-        
-    playSound 1
+        playSound 1
 
 
 startGame : Bool -> Cmd Msg
