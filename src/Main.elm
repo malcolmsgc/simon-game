@@ -182,7 +182,7 @@ generateSequence { sequence, count } =
 
 generateDelay : Cmd Msg
 generateDelay =
-    Random.generate NextPlaybackDelay (Random.float 0 1.5)
+    Random.generate NextPlaybackDelay (Random.float 0.5 1.5)
 
 startSequence : Maybe Int -> Sequence -> Maybe Time -> Cmd Msg
 startSequence count sequence delay =
