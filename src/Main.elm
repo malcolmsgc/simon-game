@@ -24,7 +24,7 @@ type alias Model =
     , sequence : Sequence
     , userSequence : Sequence
     , count : Maybe Int
-    , delayFor : Maybe Time
+    , delayFor : Maybe Time --might not be nec
     }
 
 
@@ -80,9 +80,9 @@ type Msg
     | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
-    | PlaySound Int
+    | PlaySound Int Int
     | UserEntries Int
-    | NextPlaybackDelay Float
+    | NextPlaybackDelay Int Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -108,7 +108,7 @@ update msg model =
                     Array.fromList sequenceList
 
             in
-                { model | sequence = sequenceArr } ! [ generateDelay ]
+                ({ model | sequence = sequenceArr }, sequenceController 0 model.count )
 
         UpdateCount ->
             case model.count of
@@ -117,7 +117,7 @@ update msg model =
                         newCount =
                             int + 1
                     in
-                        ( { model | count = Just newCount }, Cmd.none )
+                        ( { model | count = Just newCount }, sequenceController 0 (Just newCount) )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -128,12 +128,12 @@ update msg model =
         UserEntries id ->
             ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
 
-        NextPlaybackDelay delay ->
+        NextPlaybackDelay index delay  ->
         -- Delete model update?
-            ( { model | delayFor = (Just delay) }, startSequence model.count model.sequence (Just delay) )
+            ( { model | delayFor = (Just delay) }, playSequence index model.sequence (Just delay) )
 
-        PlaySound id ->
-            ( model, playSound id )
+        PlaySound id index ->   
+            model ! [ playSound id , playnext index model.count ]
 
 
 
@@ -176,19 +176,47 @@ generateSequence { sequence, count } =
             |> Random.generate PopulateSequence
     else
         -- if sequence exists go straight to playback of first pattern
-        -- startSequence count sequence Just 1
-        generateDelay
+        -- playSequence count sequence Just 1
+        generateDelay 0
 
 
-generateDelay : Cmd Msg
-generateDelay =
-    Random.generate NextPlaybackDelay (Random.float 0.5 1.5)
+generateDelay : Int -> Cmd Msg
+generateDelay index =
+    -- (NextPlaybackDelay index) 
+    -- |> (Random.float 0.5 1.5)
+    -- |> Random.generate 
+    Random.generate (NextPlaybackDelay index) (Random.float 0.5 1.5)
+     
+playnext : Int -> Maybe Int -> Cmd Msg
+playnext index count =
+            let
+                nextIndex =
+                    index + 1 
+            in
+                sequenceController nextIndex count
 
-startSequence : Maybe Int -> Sequence -> Maybe Time -> Cmd Msg
-startSequence count sequence delay =
+sequenceController : Int -> Maybe Int -> Cmd Msg
+sequenceController index count =
     let
-        index =
-            countToIndex count
+        adjustedIndex =
+         index + 1
+    in
+    case count of
+            Just countInt ->
+                case (adjustedIndex <= countInt) of
+                    True -> 
+                        generateDelay adjustedIndex
+                    False ->
+                    -- This is where cmd to open input to user will go
+                        Cmd.none
+            Nothing ->
+               Cmd.none
+          
+     
+
+playSequence : Int -> Sequence -> Maybe Time -> Cmd Msg
+playSequence index sequence delay =
+    let
 
         audioId =
             Array.get index sequence
@@ -202,11 +230,12 @@ startSequence count sequence delay =
     in
         case audioId of
             Just id ->
-                PlaySound id
+                PlaySound id index
                 |> setTimeout seconds
 
             Nothing ->
                 Cmd.none
+
 
 
 
