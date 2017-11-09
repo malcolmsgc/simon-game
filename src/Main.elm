@@ -4,8 +4,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, on)
 import Random
-import Time exposing (Time, millisecond)
+import Time exposing (Time, millisecond, second)
 import Task
+import Process exposing (sleep)
 import Array exposing (Array)
 import Debug exposing (log)
 
@@ -75,8 +76,7 @@ init =
 
 
 type Msg
-    = None
-    | NewGame
+    = NewGame
     | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
@@ -88,8 +88,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        None ->
-            ( model, Cmd.none )
 
         NewGame ->
             let
@@ -108,9 +106,9 @@ update msg model =
             let
                 sequenceArr =
                     Array.fromList sequenceList
+
             in
-                { model | sequence = sequenceArr } ! [ startSequence model.count sequenceArr,
-                                                            generateDelay ]
+                { model | sequence = sequenceArr } ! [ generateDelay ]
 
         UpdateCount ->
             case model.count of
@@ -131,15 +129,20 @@ update msg model =
             ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            ( { model | delayFor = (Just delay) }, Cmd.none )
+        -- Delete model update?
+            ( { model | delayFor = (Just delay) }, startSequence model.count model.sequence (Just delay) )
 
         PlaySound id ->
-            ( model, Cmd.none )
+            ( model, playSound id )
 
 
 
 -- HELPER FUNCTIONS
 
+setTimeout : Time -> Msg -> Cmd Msg
+setTimeout time msg =
+  Process.sleep time
+  |> Task.perform (\_ -> msg)
 
 countToIndex : Maybe Int -> Int
 countToIndex count =
@@ -173,45 +176,40 @@ generateSequence { sequence, count } =
             |> Random.generate PopulateSequence
     else
         -- if sequence exists go straight to playback of first pattern
-        startSequence count sequence
+        -- startSequence count sequence Just 1
+        generateDelay
 
 
 generateDelay : Cmd Msg
 generateDelay =
     Random.generate NextPlaybackDelay (Random.float 0 1.5)
 
-startSequence : Maybe Int -> Sequence -> Cmd Msg
-startSequence count sequence =
+startSequence : Maybe Int -> Sequence -> Maybe Time -> Cmd Msg
+startSequence count sequence delay =
     let
         index =
             countToIndex count
 
         audioId =
             Array.get index sequence
+
+        seconds = 
+            case delay of
+                Just float ->
+                    float * second
+                Nothing ->
+                    1 * second
     in
         case audioId of
             Just id ->
-                playSound id
+                PlaySound id
+                |> setTimeout seconds
 
             Nothing ->
                 Cmd.none
 
 
--- startGame : Bool -> Cmd Msg
--- startGame firstRun =
---     Cmd.none
 
-
-
---     let
---         cmds =
---             if firstRun then
---                 startSequence
---             else
---                 Task.succeed generateSequence
---                     |> Task.perform startSequence
---     in
---         cmds
 -- VIEW
 
 
