@@ -83,6 +83,7 @@ type Msg
     | PlaySound Int Int
     | UserEntries Int
     | NextPlaybackDelay Int Float
+    | TouchpadPress Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -134,6 +135,16 @@ update msg model =
 
         PlaySound id index ->   
             model ! [ playSound id , playnext index model.count ]
+
+        TouchpadPress id ->
+            let
+                cmd =
+                    if model.allowInput then
+                        Cmd.none
+                    else
+                        Cmd.none
+    in
+            ({ model | userSequence = Array.push id model.userSequence}, cmd)
 
 
 
@@ -258,11 +269,11 @@ view model =
 
 touchpads : Model -> List (Html Msg)
 touchpads model =
-    [ div [ class "touchpad top-row", id "top-left" ] []
-    , div [ class "touchpad top-row", id "top-right" ] []
+    [ div [ class "touchpad top-row", id "top-left", (onClick TouchpadPress 1) ] []
+    , div [ class "touchpad top-row", id "top-right", (onClick TouchpadPress 2) ] []
     , controls model
-    , div [ class "touchpad bottom-row", id "bottom-left" ] []
-    , div [ class "touchpad bottom-row", id "bottom-right" ] []
+    , div [ class "touchpad bottom-row", id "bottom-left", (onClick TouchpadPress 3) ] []
+    , div [ class "touchpad bottom-row", id "bottom-right", (onClick TouchpadPress 4) ] []
     ]
 
 
