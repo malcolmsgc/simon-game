@@ -80,7 +80,6 @@ type Msg
     | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
-    | StaggerSound
     | PlaySound Int
     | UserEntries Int
     | NextPlaybackDelay Float
@@ -110,7 +109,8 @@ update msg model =
                 sequenceArr =
                     Array.fromList sequenceList
             in
-                ( { model | sequence = sequenceArr }, startSequence model.count sequenceArr )
+                { model | sequence = sequenceArr } ! [ startSequence model.count sequenceArr,
+                                                            generateDelay ]
 
         UpdateCount ->
             case model.count of
@@ -129,9 +129,6 @@ update msg model =
 
         UserEntries id ->
             ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
-
-        StaggerSound ->
-            ( model, Random.generate NextPlaybackDelay (Random.float 0 1.5) )
 
         NextPlaybackDelay delay ->
             ( { model | delayFor = (Just delay) }, Cmd.none )
@@ -163,9 +160,9 @@ countToIndex count =
 
 
 -- TASKS
+
+
 -- Generates a List which is then converted to an Array in PopulateSequence
-
-
 generateSequence : Model -> Cmd Msg
 generateSequence { sequence, count } =
     if
@@ -179,9 +176,12 @@ generateSequence { sequence, count } =
         startSequence count sequence
 
 
+generateDelay : Cmd Msg
+generateDelay =
+    Random.generate NextPlaybackDelay (Random.float 0 1.5)
+
 startSequence : Maybe Int -> Sequence -> Cmd Msg
 startSequence count sequence =
-    -- TO DO : Only have one id here as a test. Needs more logic to play full pattern
     let
         index =
             countToIndex count
@@ -197,9 +197,9 @@ startSequence count sequence =
                 Cmd.none
 
 
-startGame : Bool -> Cmd Msg
-startGame firstRun =
-    Cmd.none
+-- startGame : Bool -> Cmd Msg
+-- startGame firstRun =
+--     Cmd.none
 
 
 
