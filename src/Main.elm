@@ -84,6 +84,7 @@ type Msg
     | UserEntries Int
     | NextPlaybackDelay Int Float
     | TouchpadPress Int
+    | AllowInputToggle
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -143,10 +144,20 @@ update msg model =
                         Cmd.none
                     else
                         Cmd.none
+                newModel =
+                    if model.allowInput then
+                        { model | userSequence = Array.push id model.userSequence}
+                    else
+                        model
     in
-            ({ model | userSequence = Array.push id model.userSequence}, cmd)
+            ( newModel , cmd )
 
-
+        AllowInputToggle ->
+                let 
+                    toggledPermission = 
+                        not model.allowInput
+                in
+                ( { model | allowInput = toggledPermission } , Cmd.none)
 
 -- HELPER FUNCTIONS
 
@@ -219,7 +230,8 @@ sequenceController index count =
                         generateDelay adjustedIndex
                     False ->
                     -- This is where cmd to open input to user will go
-                        Cmd.none
+                       Cmd.map (always AllowInputToggle) Cmd.none
+                       
             Nothing ->
                Cmd.none
           
@@ -269,11 +281,11 @@ view model =
 
 touchpads : Model -> List (Html Msg)
 touchpads model =
-    [ div [ class "touchpad top-row", id "top-left", (onClick TouchpadPress 1) ] []
-    , div [ class "touchpad top-row", id "top-right", (onClick TouchpadPress 2) ] []
+    [ div [ class "touchpad top-row", id "top-left", onClick (TouchpadPress 1) ] []
+    , div [ class "touchpad top-row", id "top-right", onClick (TouchpadPress 2) ] []
     , controls model
-    , div [ class "touchpad bottom-row", id "bottom-left", (onClick TouchpadPress 3) ] []
-    , div [ class "touchpad bottom-row", id "bottom-right", (onClick TouchpadPress 4) ] []
+    , div [ class "touchpad bottom-row", id "bottom-left", onClick (TouchpadPress 3) ] []
+    , div [ class "touchpad bottom-row", id "bottom-right", onClick (TouchpadPress 4) ] []
     ]
 
 
