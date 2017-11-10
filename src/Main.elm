@@ -192,7 +192,7 @@ countToIndex count =
         index
 
 
-validateSequence : Model -> Array Bool
+validateSequence : Model -> Bool
 validateSequence { count, sequence, userSequence } =
     let
         testToIndex =
@@ -213,7 +213,7 @@ validateSequence { count, sequence, userSequence } =
         validate =
             Array.indexedMap testFunc userSequence
     in
-        log "validate" validate
+        log "validate" (Array.foldr (\a b -> a && b) True validate)
 
 
 
