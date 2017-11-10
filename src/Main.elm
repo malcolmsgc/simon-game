@@ -137,7 +137,9 @@ update msg model =
         PlaySound id index ->
             let
                 cmd =
-                    Cmd.map (always (SequenceController (index + 1) model.count)) (playSound id)
+                    -- Cmd.map (always (SequenceController (index + 1) model.count)) (playSound id)
+                    (playSound id)
+                    |> Cmd.map (always (SequenceController (index + 1) model.count))
             in
                 ( model, cmd )
 
