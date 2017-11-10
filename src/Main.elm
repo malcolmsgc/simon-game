@@ -84,7 +84,7 @@ type Msg
     | UserEntries Int
     | NextPlaybackDelay Int Float
     | TouchpadPress Int
-    | SequenceController Int (Maybe Int)
+    -- | SequenceController Int (Maybe Int)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -108,8 +108,7 @@ update msg model =
                 sequenceArr =
                     Array.fromList sequenceList
             in
-                -- playnext index model
-                update (SequenceController 0 model.count) { model | sequence = sequenceArr }
+                ( { model | sequence = sequenceArr }, sequenceControllerCmd 0 model.count ) 
 
         UpdateCount ->
             case model.count of
@@ -119,7 +118,7 @@ update msg model =
                             int + 1
                     in
                         -- need to update sequencecontroller's 1st arg
-                        update (SequenceController 0 (Just newCount)) { model | count = Just newCount }
+                        ({ model | count = Just newCount }, sequenceControllerCmd 0 (Just newCount)) 
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -135,13 +134,23 @@ update msg model =
             ( { model | delayFor = (Just delay) }, playSequence index model.sequence (Just delay) )
 
         PlaySound id index ->
+            -- let
+            --     cmd =
+            --         (Cmd.none)
+            --         |> Cmd.map (always (SequenceController (index + 1) model.count))
+            -- in
             let
-                cmd =
-                    -- Cmd.map (always (SequenceController (index + 1) model.count)) (playSound id)
-                    (playSound id)
-                    |> Cmd.map (always (SequenceController (index + 1) model.count))
+                openUserInput = 
+                 sequenceControllerModel model index model.count
+
+                newModel = 
+                if openUserInput then
+                    { model | allowInput = not model.allowInput }
+                else 
+                    model
             in
-                ( model, cmd )
+                
+                newModel ! [ (playSound id) , log "cmd" sequenceControllerCmd (index + 1) model.count ]
 
         TouchpadPress id ->
             let
@@ -158,27 +167,6 @@ update msg model =
                         model
             in
                 ( newModel, cmd )
-
-        SequenceController nextIndex count ->
-            let
-                nextIndexAdjusted =
-                    (log " nexti" nextIndex) + 1
-
-                -- + 1 to adjust to match count's 1 based index
-            in
-                case count of
-                    Just countInt ->
-                        case (log "nextadjusted" nextIndexAdjusted <= log "count" countInt) of
-                            True ->
-                                ( model, generateDelay nextIndexAdjusted )
-
-                            False ->
-                                -- This is where cmd to open input to user will go
-                                ( { model | allowInput = not model.allowInput }, Cmd.none )
-
-                    Nothing ->
-                        ( initModel, Cmd.none )
-
 
 
 -- HELPER FUNCTIONS
@@ -206,14 +194,12 @@ countToIndex count =
     in
         index
 
-
-
 -- TASKS
 -- Generates a List which is then converted to an Array in PopulateSequence
 
 
 generateSequence : Model -> Cmd Msg
-generateSequence { sequence, count } =
+generateSequence { sequence } =
     if
         sequence
             |> Array.isEmpty
@@ -256,6 +242,43 @@ playSequence index sequence delay =
                 Cmd.none
 
 
+sequenceControllerModel: Model -> Int -> Maybe Int -> Bool
+sequenceControllerModel model index count = 
+    -- case model.allowInput of
+    --     True ->
+            let
+                indexAdjusted =
+                    (log "nextiModel" index) + 1
+
+                -- + 1 to adjust to match count's 1 based index
+            in
+                case count of
+                    Just countInt ->
+                        log "nextadjusted-Model" indexAdjusted >= log "count-Model" countInt
+                        -- return True when adjusted index equals current step count
+
+                    Nothing ->
+                        False
+
+sequenceControllerCmd: Int -> Maybe Int -> Cmd Msg
+sequenceControllerCmd index count =
+            let
+                indexAdjusted =
+                    (log "nexti2" index) + 1
+
+                -- + 1 to adjust to match count's 1 based index
+            in
+                case count of
+                    Just countInt ->
+                        case (log "nextadjusted2" indexAdjusted <= log "count2" countInt) of
+                            True ->
+                                generateDelay index
+
+                            False ->
+                                Cmd.none
+
+                    Nothing ->
+                        Cmd.none
 
 -- VIEW
 
@@ -355,11 +378,6 @@ sounds soundList =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    -- if model.gameActive && not model.allowInput then
-    --     Sub.batch
-    --         [ Time.every (250 * millisecond) Tick
-    --         ]
-    -- else
     Sub.none
 
 
