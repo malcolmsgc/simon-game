@@ -81,10 +81,9 @@ type Msg
     | PopulateSequence (List Int)
     | ToggleStrict Bool
     | PlaySound Int Int
-    | UserEntries Int
     | NextPlaybackDelay Int Float
     | TouchpadPress Int
-    -- | SequenceController Int (Maybe Int)
+    | ValidateUserSequence
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -126,8 +125,9 @@ update msg model =
         ToggleStrict isStrict ->
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
-        UserEntries id ->
-            ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
+        ValidateUserSequence ->
+            
+            ({model| test = "validation firing"}, Cmd.none)
 
         NextPlaybackDelay index delay ->
             -- Delete model update?
@@ -154,11 +154,6 @@ update msg model =
 
         TouchpadPress id ->
             let
-                cmd =
-                    if model.allowInput then
-                        Cmd.none
-                    else
-                        Cmd.none
 
                 newModel =
                     if model.allowInput then
@@ -166,7 +161,7 @@ update msg model =
                     else
                         model
             in
-                ( newModel, cmd )
+            update ValidateUserSequence newModel
 
 
 -- HELPER FUNCTIONS
