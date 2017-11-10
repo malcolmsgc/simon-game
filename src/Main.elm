@@ -84,13 +84,12 @@ type Msg
     | UserEntries Int
     | NextPlaybackDelay Int Float
     | TouchpadPress Int
-    | AllowInputToggle
+    | SequenceController Int (Maybe Int)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-
         NewGame ->
             let
                 currentCount =
@@ -108,9 +107,9 @@ update msg model =
             let
                 sequenceArr =
                     Array.fromList sequenceList
-
             in
-                ({ model | sequence = sequenceArr }, sequenceController 0 model.count )
+                -- playnext index model
+                update (SequenceController 0 model.count) { model | sequence = sequenceArr }
 
         UpdateCount ->
             case model.count of
@@ -119,7 +118,8 @@ update msg model =
                         newCount =
                             int + 1
                     in
-                        ( { model | count = Just newCount }, sequenceController 0 (Just newCount) )
+                        -- need to update sequencecontroller's 1st arg
+                        update (SequenceController 0 (Just newCount)) { model | count = Just newCount }
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -130,12 +130,16 @@ update msg model =
         UserEntries id ->
             ( { model | userSequence = Array.push id model.userSequence }, Cmd.none )
 
-        NextPlaybackDelay index delay  ->
-        -- Delete model update?
+        NextPlaybackDelay index delay ->
+            -- Delete model update?
             ( { model | delayFor = (Just delay) }, playSequence index model.sequence (Just delay) )
 
-        PlaySound id index ->   
-            model ! [ playSound id , playnext index model.count ]
+        PlaySound id index ->
+            let
+                cmd =
+                    Cmd.map (always (SequenceController (index + 1) model.count)) (playSound id)
+            in
+                ( model, cmd )
 
         TouchpadPress id ->
             let
@@ -144,27 +148,45 @@ update msg model =
                         Cmd.none
                     else
                         Cmd.none
+
                 newModel =
                     if model.allowInput then
-                        { model | userSequence = Array.push id model.userSequence}
+                        { model | userSequence = Array.push id model.userSequence }
                     else
                         model
-    in
-            ( newModel , cmd )
+            in
+                ( newModel, cmd )
 
-        AllowInputToggle ->
-                let 
-                    toggledPermission = 
-                        not model.allowInput
-                in
-                ( { model | allowInput = toggledPermission } , Cmd.none)
+        SequenceController nextIndex count ->
+            let
+                nextIndexAdjusted =
+                    (log " nexti" nextIndex) + 1
+
+                -- + 1 to adjust to match count's 1 based index
+            in
+                case count of
+                    Just countInt ->
+                        case (log "nextadjusted" nextIndexAdjusted <= log "count" countInt) of
+                            True ->
+                                ( model, generateDelay nextIndexAdjusted )
+
+                            False ->
+                                -- This is where cmd to open input to user will go
+                                ( { model | allowInput = not model.allowInput }, Cmd.none )
+
+                    Nothing ->
+                        ( initModel, Cmd.none )
+
+
 
 -- HELPER FUNCTIONS
 
+
 setTimeout : Time -> Msg -> Cmd Msg
 setTimeout time msg =
-  Process.sleep time
-  |> Task.perform (\_ -> msg)
+    Process.sleep time
+        |> Task.perform (\_ -> msg)
+
 
 countToIndex : Maybe Int -> Int
 countToIndex count =
@@ -185,9 +207,9 @@ countToIndex count =
 
 
 -- TASKS
-
-
 -- Generates a List which is then converted to an Array in PopulateSequence
+
+
 generateSequence : Model -> Cmd Msg
 generateSequence { sequence, count } =
     if
@@ -198,67 +220,38 @@ generateSequence { sequence, count } =
             |> Random.generate PopulateSequence
     else
         -- if sequence exists go straight to playback of first pattern
-        -- playSequence count sequence Just 1
         generateDelay 0
 
 
 generateDelay : Int -> Cmd Msg
 generateDelay index =
-    -- (NextPlaybackDelay index) 
+    -- (NextPlaybackDelay index)
     -- |> (Random.float 0.5 1.5)
-    -- |> Random.generate 
+    -- |> Random.generate
     Random.generate (NextPlaybackDelay index) (Random.float 0.5 1.5)
-     
-playnext : Int -> Maybe Int -> Cmd Msg
-playnext index count =
-            let
-                nextIndex =
-                    index + 1 
-            in
-                sequenceController nextIndex count
 
-sequenceController : Int -> Maybe Int -> Cmd Msg
-sequenceController index count =
-    let
-        adjustedIndex =
-         index + 1
-    in
-    case count of
-            Just countInt ->
-                case (adjustedIndex <= countInt) of
-                    True -> 
-                        generateDelay adjustedIndex
-                    False ->
-                    -- This is where cmd to open input to user will go
-                       Cmd.map (always AllowInputToggle) Cmd.none
-                       
-            Nothing ->
-               Cmd.none
-          
-     
 
 playSequence : Int -> Sequence -> Maybe Time -> Cmd Msg
 playSequence index sequence delay =
     let
-
         audioId =
             Array.get index sequence
 
-        seconds = 
+        seconds =
             case delay of
                 Just float ->
                     float * second
+
                 Nothing ->
                     1 * second
     in
         case audioId of
             Just id ->
                 PlaySound id index
-                |> setTimeout seconds
+                    |> setTimeout seconds
 
             Nothing ->
                 Cmd.none
-
 
 
 
