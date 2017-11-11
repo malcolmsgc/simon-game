@@ -102,7 +102,8 @@ type Msg
     | PlaySound Int Int
     | NextPlaybackDelay Int Float
     | TouchpadPress Int
-    | ValidateUserSequence
+    | ValidateUserSequence Int
+    | RemoveActiveClass Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -144,12 +145,39 @@ update msg model =
         ToggleStrict isStrict ->
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
-        ValidateUserSequence ->
+        ValidateUserSequence id ->
             let
                 isMatch =
                     validateSequence model
+                removeActive = 
+                    setTimeout (500 * millisecond) (RemoveActiveClass id)
             in
-                ( { model | test = (toString isMatch) }, Cmd.none )
+                ( { model | test = (toString isMatch) }, removeActive )
+            
+        RemoveActiveClass id ->
+            let    
+                activePad =
+                    model.activePad
+
+                newActivePad =
+                    case id of
+                            1 ->
+                                { activePad | topleft = False }
+
+                            2 ->
+                                { activePad | topright = False }
+
+                            3 ->
+                                { activePad | bottomleft = False }
+
+                            4 ->
+                                { activePad | bottomright = False }
+
+                            _ ->
+                                activePad
+            in
+                ({model | activePad = newActivePad}, Cmd.none)
+
 
         NextPlaybackDelay index delay ->
             -- Delete model update?
@@ -201,7 +229,7 @@ update msg model =
                     else
                         model
             in
-                update ValidateUserSequence newModel
+                update (ValidateUserSequence id) newModel
 
 
 
