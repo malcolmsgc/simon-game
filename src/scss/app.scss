@@ -134,6 +134,11 @@ footer {
                         box-shadow: 0px 0px 15px #f9cf83;
                     }
                 }
+                &:focus{ 
+                    outline-color: rgb(139, 235, 124);
+                    outline-width: 1px;
+                    
+                }
             }
             .step-count {
                 width: 3.3em;

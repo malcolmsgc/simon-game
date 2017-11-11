@@ -24,7 +24,9 @@ type alias Model =
     , gameSounds : List Sound
     , sequence : Sequence
     , userSequence : Sequence
+    , correctSeq : Bool
     , count : Maybe Int
+    , seqIndex : Int
     , delayFor : Maybe Time --might not be nec
     }
 
@@ -65,7 +67,9 @@ initModel =
     , gameSounds = gameSounds
     , sequence = emptyArray
     , userSequence = emptyArray
+    , correctSeq = True
     , count = Nothing
+    , seqIndex = 0
     , delayFor = Nothing
     }
 
@@ -99,8 +103,8 @@ type Msg
     | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
-    | PlaySound Int Int
-    | NextPlaybackDelay Int Float
+    | PlaySound Int
+    | NextPlaybackDelay Float
     | TouchpadPress Int
     | ValidateUserSequence Int
     | RemoveActiveClass Int
@@ -116,7 +120,14 @@ update msg model =
 
                 newModel =
                     if currentCount > 0 then
-                        { model | sequence = emptyArray, userSequence = emptyArray, count = Just 1, allowInput = False }
+                        { model
+                            | sequence = emptyArray
+                            , userSequence = emptyArray
+                            , count = Just 1
+                            , allowInput = False
+                            , correctSeq = True
+                            , seqIndex = 0
+                        }
                     else
                         { model | gameActive = True, count = Just 1 }
             in
@@ -149,57 +160,63 @@ update msg model =
             let
                 isMatch =
                     validateSequence model
-                removeActive = 
-                    setTimeout (500 * millisecond) (RemoveActiveClass id)
             in
-                ( { model | test = (toString isMatch) }, removeActive )
-            
+                if log "isMatch: " isMatch then
+                    update (PlaySound id) model
+                else
+                    update (PlaySound id) { model | correctSeq = False }
+
         RemoveActiveClass id ->
-            let    
+            let
                 activePad =
                     model.activePad
 
                 newActivePad =
                     case id of
-                            1 ->
-                                { activePad | topleft = False }
+                        1 ->
+                            { activePad | topleft = False }
 
-                            2 ->
-                                { activePad | topright = False }
+                        2 ->
+                            { activePad | topright = False }
 
-                            3 ->
-                                { activePad | bottomleft = False }
+                        3 ->
+                            { activePad | bottomleft = False }
 
-                            4 ->
-                                { activePad | bottomright = False }
+                        4 ->
+                            { activePad | bottomright = False }
 
-                            _ ->
-                                activePad
+                        _ ->
+                            activePad
             in
-                ({model | activePad = newActivePad}, Cmd.none)
+                ( { model | activePad = newActivePad }, Cmd.none )
 
-
-        NextPlaybackDelay index delay ->
+        NextPlaybackDelay delay ->
             -- Delete model update?
-            ( { model | delayFor = (Just delay) }, playSequence index model.sequence (Just delay) )
+            ( { model | delayFor = (Just delay) }, playSequence model.seqIndex model.sequence (Just delay) )
 
-        PlaySound id index ->
+        PlaySound id ->
             -- let
             --     cmd =
             --         (Cmd.none)
             --         |> Cmd.map (always (SequenceController (index + 1) model.count))
             -- in
             let
+                removeActive =
+                    setTimeout (350 * millisecond) (RemoveActiveClass id)
+
                 openUserInput =
-                    sequenceControllerModel model index model.count
+                    sequenceControllerModel model
+
+                nextIndex =
+                    model.seqIndex + 1
 
                 newModel =
                     if openUserInput then
                         { model | allowInput = not model.allowInput }
                     else
-                        model
+                        { model | seqIndex = nextIndex }
             in
-                newModel ! [ (playSound id), log "cmd" sequenceControllerCmd (index + 1) model.count ]
+                newModel ! [ (playSound id), log "cmd" sequenceControllerCmd nextIndex model.count, removeActive ]
 
         TouchpadPress id ->
             let
@@ -298,15 +315,15 @@ generateSequence { sequence } =
             |> Random.generate PopulateSequence
     else
         -- if sequence exists go straight to playback of first pattern
-        generateDelay 0
+        generateDelay
 
 
-generateDelay : Int -> Cmd Msg
-generateDelay index =
+generateDelay : Cmd Msg
+generateDelay =
     -- (NextPlaybackDelay index)
     -- |> (Random.float 0.5 1.5)
     -- |> Random.generate
-    Random.generate (NextPlaybackDelay index) (Random.float 0.5 1.5)
+    Random.generate NextPlaybackDelay (Random.float 0.5 1.5)
 
 
 playSequence : Int -> Sequence -> Maybe Time -> Cmd Msg
@@ -325,20 +342,20 @@ playSequence index sequence delay =
     in
         case audioId of
             Just id ->
-                PlaySound id index
+                PlaySound id
                     |> setTimeout seconds
 
             Nothing ->
                 Cmd.none
 
 
-sequenceControllerModel : Model -> Int -> Maybe Int -> Bool
-sequenceControllerModel model index count =
+sequenceControllerModel : Model -> Bool
+sequenceControllerModel { seqIndex, count } =
     -- case model.allowInput of
     --     True ->
     let
         indexAdjusted =
-            (log "nextiModel" index) + 1
+            (log "nextiModel" seqIndex) + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
@@ -363,7 +380,7 @@ sequenceControllerCmd index count =
             Just countInt ->
                 case (log "nextadjusted2" indexAdjusted <= log "count2" countInt) of
                     True ->
-                        generateDelay index
+                        generateDelay
 
                     False ->
                         Cmd.none
@@ -405,12 +422,15 @@ touchpads model =
 
 
 controls : Model -> Html Msg
-controls { count, gameActive, strictMode } =
+controls { count, gameActive, strictMode, correctSeq } =
     let
         stepCount =
             case count of
                 Just int ->
-                    (toString int)
+                    if correctSeq then
+                        (toString int)
+                    else
+                        "X"
 
                 Nothing ->
                     "--"
@@ -418,10 +438,13 @@ controls { count, gameActive, strictMode } =
         stepUnit =
             case count of
                 Just int ->
-                    if int <= 1 then
-                        "step"
+                    if correctSeq then
+                        if int <= 1 then
+                            "step"
+                        else
+                            "steps"
                     else
-                        "steps"
+                        "incorrect"
 
                 Nothing ->
                     "press start"
