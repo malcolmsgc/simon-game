@@ -20,6 +20,7 @@ type alias Model =
     , gameActive : Bool
     , allowInput : Bool
     , strictMode : Bool
+    , activePad : PadRecord
     , gameSounds : List Sound
     , sequence : Sequence
     , userSequence : Sequence
@@ -32,9 +33,26 @@ type alias Sequence =
     Array Int
 
 
+type alias PadRecord =
+    { topleft : Bool
+    , topright : Bool
+    , bottomleft : Bool
+    , bottomright : Bool
+    }
+
+
 emptyArray : Sequence
 emptyArray =
     Array.fromList []
+
+
+initPads : PadRecord
+initPads =
+    { topleft = False
+    , topright = False
+    , bottomleft = False
+    , bottomright = False
+    }
 
 
 initModel : Model
@@ -43,6 +61,7 @@ initModel =
     , gameActive = False
     , allowInput = False
     , strictMode = False
+    , activePad = initPads
     , gameSounds = gameSounds
     , sequence = emptyArray
     , userSequence = emptyArray
@@ -156,9 +175,29 @@ update msg model =
 
         TouchpadPress id ->
             let
+                activePad =
+                    model.activePad
+
+                newActivePad =
+                    case id of
+                        1 ->
+                            { activePad | topleft = True }
+
+                        2 ->
+                            { activePad | topright = True }
+
+                        3 ->
+                            { activePad | bottomleft = True }
+
+                        4 ->
+                            { activePad | bottomright = True }
+
+                        _ ->
+                            activePad
+
                 newModel =
                     if model.allowInput then
-                        { model | userSequence = Array.push id model.userSequence }
+                        { model | userSequence = Array.push id model.userSequence, activePad = newActivePad }
                     else
                         model
             in
@@ -325,12 +364,16 @@ view model =
 
 touchpads : Model -> List (Html Msg)
 touchpads model =
-    [ div [ class "touchpad top-row", id "top-left", onClick (TouchpadPress 1) ] []
-    , div [ class "touchpad top-row", id "top-right", onClick (TouchpadPress 2) ] []
-    , controls model
-    , div [ class "touchpad bottom-row", id "bottom-left", onClick (TouchpadPress 3) ] []
-    , div [ class "touchpad bottom-row", id "bottom-right", onClick (TouchpadPress 4) ] []
-    ]
+    let
+        active =
+            model.activePad
+    in
+        [ div [ classList [ ( "touchpad", True ), ( "active", active.topleft ) ], id "top-left", onClick (TouchpadPress 1) ] []
+        , div [ classList [ ( "touchpad", True ), ( "active", active.topright ) ], id "top-right", onClick (TouchpadPress 2) ] []
+        , controls model
+        , div [ classList [ ( "touchpad", True ), ( "active", active.bottomleft ) ], id "bottom-left", onClick (TouchpadPress 3) ] []
+        , div [ classList [ ( "touchpad", True ), ( "active", active.bottomright ) ], id "bottom-right", onClick (TouchpadPress 4) ] []
+        ]
 
 
 controls : Model -> Html Msg
