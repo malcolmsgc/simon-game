@@ -164,8 +164,7 @@ update msg model =
                 if log "isMatch: " isMatch then
                     update (PlaySound id) model
                 else
-                    { model | correctSeq = False, userSequence = emptyArray, seqIndex = 0 } !
-                    [ msgAsCmd (PlaySound id) ] 
+                    update (PlaySound id) { model | correctSeq = False, userSequence = emptyArray, seqIndex = 0 }
 
         RemoveActiveClass id ->
             let
