@@ -241,12 +241,13 @@ update msg model =
                             activePad
 
                 newModel =
-                    if model.allowInput then
                         { model | userSequence = Array.push id model.userSequence, activePad = newActivePad }
-                    else
-                        model
             in
-                update (ValidateUserSequence id) newModel
+                if model.allowInput then
+                    update (ValidateUserSequence id) newModel
+
+                else
+                    ( model, Cmd.none )
 
 
 
