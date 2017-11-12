@@ -168,25 +168,10 @@ update msg model =
 
         RemoveActiveClass id ->
             let
-                activePad =
-                    model.activePad
-
+                -- activePad =
+                --     model.activePad
                 newActivePad =
-                    case id of
-                        1 ->
-                            { activePad | topleft = False }
-
-                        2 ->
-                            { activePad | topright = False }
-
-                        3 ->
-                            { activePad | bottomleft = False }
-
-                        4 ->
-                            { activePad | bottomright = False }
-
-                        _ ->
-                            activePad
+                    idToPad model.activePad id False
             in
                 ( { model | activePad = newActivePad }, Cmd.none )
 
@@ -201,6 +186,9 @@ update msg model =
             --         |> Cmd.map (always (SequenceController (index + 1) model.count))
             -- in
             let
+                newActivePad =
+                    idToPad model.activePad id True
+
                 removeActive =
                     setTimeout (350 * millisecond) (RemoveActiveClass id)
 
@@ -210,42 +198,26 @@ update msg model =
                 nextIndex =
                     model.seqIndex + 1
 
-                newModel =
-                    if openUserInput then
-                        { model | allowInput = not model.allowInput }
-                    else
-                        { model | seqIndex = nextIndex }
+                cmdBatch =
+                    [ (playSound id), removeActive, (sequenceControllerCmd nextIndex model.count) ]
             in
-                newModel ! [ (playSound id), log "cmd" sequenceControllerCmd nextIndex model.count, removeActive ]
+                if openUserInput then
+                    { model | allowInput = True, activePad = newActivePad } ! cmdBatch
+                else
+                    { model
+                        | seqIndex = nextIndex
+                        , allowInput = False
+                        , activePad = newActivePad
+                    }
+                        ! cmdBatch
 
         TouchpadPress id ->
             let
-                activePad =
-                    model.activePad
-
-                newActivePad =
-                    case id of
-                        1 ->
-                            { activePad | topleft = True }
-
-                        2 ->
-                            { activePad | topright = True }
-
-                        3 ->
-                            { activePad | bottomleft = True }
-
-                        4 ->
-                            { activePad | bottomright = True }
-
-                        _ ->
-                            activePad
-
                 newModel =
-                        { model | userSequence = Array.push id model.userSequence, activePad = newActivePad }
+                    { model | userSequence = Array.push id model.userSequence }
             in
                 if model.allowInput then
                     update (ValidateUserSequence id) newModel
-
                 else
                     ( model, Cmd.none )
 
@@ -275,6 +247,25 @@ countToIndex count =
                     -10
     in
         index
+
+
+idToPad : PadRecord -> Int -> Bool -> PadRecord
+idToPad padrecord id switchTo =
+    case id of
+        1 ->
+            { padrecord | topleft = switchTo }
+
+        2 ->
+            { padrecord | topright = switchTo }
+
+        3 ->
+            { padrecord | bottomleft = switchTo }
+
+        4 ->
+            { padrecord | bottomright = switchTo }
+
+        _ ->
+            padrecord
 
 
 validateSequence : Model -> Bool
@@ -352,11 +343,9 @@ playSequence index sequence delay =
 
 sequenceControllerModel : Model -> Bool
 sequenceControllerModel { seqIndex, count } =
-    -- case model.allowInput of
-    --     True ->
     let
         indexAdjusted =
-            (log "nextiModel" seqIndex) + 1
+            (log "nexti-Model" seqIndex) + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
@@ -373,13 +362,13 @@ sequenceControllerCmd : Int -> Maybe Int -> Cmd Msg
 sequenceControllerCmd index count =
     let
         indexAdjusted =
-            (log "nexti2" index) + 1
+            (log "nexti-CMD" index) + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
         case count of
             Just countInt ->
-                case (log "nextadjusted2" indexAdjusted <= log "count2" countInt) of
+                case (log "nextadjusted-CMD" indexAdjusted <= log "count-CMD" countInt) of
                     True ->
                         generateDelay
 
