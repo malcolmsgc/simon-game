@@ -123,13 +123,13 @@ update msg model =
                         { model
                             | sequence = emptyArray
                             , userSequence = emptyArray
-                            , count = Just 4
+                            , count = Just 2
                             , allowInput = False
                             , correctSeq = True
                             , seqIndex = 0
                         }
                     else
-                        { model | gameActive = True, count = Just 4, seqIndex = 0 }
+                        { model | gameActive = True, count = Just 2, seqIndex = 0 }
             in
                 ( newModel, generateSequence newModel )
 
@@ -138,7 +138,7 @@ update msg model =
                 sequenceArr =
                     Array.fromList sequenceList
             in
-                ( { model | sequence = sequenceArr }, sequenceControllerCmd 0 model.count )
+                ( { model | sequence = sequenceArr }, sequenceControllerCmd model 0 model.count )
 
         UpdateCount ->
             case model.count of
@@ -148,7 +148,7 @@ update msg model =
                             int + 1
                     in
                         -- need to update sequencecontroller's 1st arg
-                        ( { model | count = Just newCount }, sequenceControllerCmd 0 (Just newCount) )
+                        ( { model | count = Just newCount }, sequenceControllerCmd model 0 (Just newCount) )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -164,7 +164,8 @@ update msg model =
                 if log "isMatch: " isMatch then
                     update (PlaySound id) model
                 else
-                    update (PlaySound id) { model | correctSeq = False }
+                    { model | correctSeq = False, userSequence = emptyArray, seqIndex = 0 } !
+                    [ msgAsCmd (PlaySound id) ] 
 
         RemoveActiveClass id ->
             let
@@ -176,8 +177,8 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            -- Delete model update?
-            ( { model | delayFor = (Just delay) }, playSequence model.seqIndex model.sequence (Just delay) )
+            ( model, playSequence model.seqIndex model.sequence (Just delay) )
+
 
         PlaySound id ->
             -- let
@@ -192,22 +193,23 @@ update msg model =
                 removeActive =
                     setTimeout (350 * millisecond) (RemoveActiveClass id)
 
-                openUserInput =
-                    sequenceControllerModel model
-
                 nextIndex =
-                    model.seqIndex + 1
+                    if model.correctSeq then
+                        model.seqIndex + 1
+                    else
+                        0
 
                 cmdBatch =
-                    [ (playSound id), removeActive, (sequenceControllerCmd nextIndex model.count) ]
+                    [ (playSound id), removeActive, (sequenceControllerCmd model nextIndex model.count) ]
             in
-                if openUserInput then
+                if log "PLAYSOUND openUserInput" (openUserInput model) then
                     { model | allowInput = True, activePad = newActivePad } ! cmdBatch
                 else
                     { model
                         | seqIndex = nextIndex
                         , allowInput = False
                         , activePad = newActivePad
+                        , correctSeq = True
                     }
                         ! cmdBatch
 
@@ -224,6 +226,12 @@ update msg model =
 
 
 -- HELPER FUNCTIONS
+
+
+msgAsCmd : msg -> Cmd msg
+msgAsCmd msg =
+    Task.succeed msg
+        |> Task.perform identity
 
 
 setTimeout : Time -> Msg -> Cmd Msg
@@ -323,8 +331,11 @@ playSequence : Int -> Sequence -> Maybe Time -> Cmd Msg
 playSequence index sequence delay =
     let
         audioId =
+            -- if model.correctSeq then
             Array.get index sequence
 
+        -- else
+        --     Nothing
         seconds =
             case delay of
                 Just float ->
@@ -342,42 +353,49 @@ playSequence index sequence delay =
                 Cmd.none
 
 
-sequenceControllerModel : Model -> Bool
-sequenceControllerModel { seqIndex, count } =
+openUserInput : Model -> Bool
+openUserInput { seqIndex, count, correctSeq } =
     let
         indexAdjusted =
             (log "nexti-Model" seqIndex) + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
-        case count of
-            Just countInt ->
-                log "nextadjusted-Model" indexAdjusted >= log "count-Model" countInt
+        if correctSeq then
+            case count of
+                Just countInt ->
+                    log "nextadjusted-Model" indexAdjusted >= log "count-Model" countInt
 
-            -- return True when adjusted index equals current step count
-            Nothing ->
-                False
+                -- return True when adjusted index equals current step count
+                Nothing ->
+                    False
+        else
+            --return false when user has input incorrect sequence
+            False
 
 
-sequenceControllerCmd : Int -> Maybe Int -> Cmd Msg
-sequenceControllerCmd index count =
+sequenceControllerCmd : Model -> Int -> Maybe Int -> Cmd Msg
+sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
     let
         indexAdjusted =
             (log "nexti-CMD" index) + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
-        case count of
-            Just countInt ->
-                case (log "nextadjusted-CMD" indexAdjusted <= log "count-CMD" countInt) of
-                    True ->
-                        generateDelay
+        if log "sequenceControllerCmd correctSeq" correctSeq then
+            case count of
+                Just countInt ->
+                    case (log "nextadjusted-CMD" indexAdjusted <= log "count-CMD" countInt) of
+                        True ->
+                            generateDelay
 
-                    False ->
-                        Cmd.none
+                        False ->
+                            Cmd.none
 
-            Nothing ->
-                Cmd.none
+                Nothing ->
+                    Cmd.none
+        else
+            playSequence index sequence (Just 1.5)
 
 
 
