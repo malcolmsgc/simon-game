@@ -123,13 +123,13 @@ update msg model =
                         { model
                             | sequence = emptyArray
                             , userSequence = emptyArray
-                            , count = Just 1
+                            , count = Just 4
                             , allowInput = False
                             , correctSeq = True
                             , seqIndex = 0
                         }
                     else
-                        { model | gameActive = True, count = Just 1 }
+                        { model | gameActive = True, count = Just 4, seqIndex = 0 }
             in
                 ( newModel, generateSequence newModel )
 
@@ -315,7 +315,8 @@ generateDelay =
     -- (NextPlaybackDelay index)
     -- |> (Random.float 0.5 1.5)
     -- |> Random.generate
-    Random.generate NextPlaybackDelay (Random.float 0.5 1.5)
+    -- NB needs min delay of 0.7secs to allow precceding sound to finish
+    Random.generate NextPlaybackDelay (Random.float 0.8 1.5)
 
 
 playSequence : Int -> Sequence -> Maybe Time -> Cmd Msg
