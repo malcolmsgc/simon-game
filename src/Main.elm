@@ -165,8 +165,8 @@ update msg model =
                     update (PlaySound id) model
                 else
                     { model | correctSeq = False, userSequence = emptyArray, seqIndex = 0 } !
-                    [ msgAsCmd (PlaySound id) ] 
-
+                    [ msgAsCmd (PlaySound id) ]
+                    
         RemoveActiveClass id ->
             let
                 -- activePad =
