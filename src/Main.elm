@@ -25,6 +25,7 @@ type alias Model =
     , sequence : Sequence
     , userSequence : Sequence
     , correctSeq : Bool
+    , showErr : Bool
     , count : Maybe Int
     , seqIndex : Int
     , delayFor : Maybe Time --might not be nec
@@ -68,6 +69,7 @@ initModel =
     , sequence = emptyArray
     , userSequence = emptyArray
     , correctSeq = True
+    , showErr = False
     , count = Nothing
     , seqIndex = 0
     , delayFor = Nothing
@@ -164,9 +166,14 @@ update msg model =
                 if log "isMatch: " isMatch then
                     update (PlaySound id) model
                 else
-                    { model | correctSeq = False, userSequence = emptyArray, seqIndex = 0 } !
-                    [ msgAsCmd (PlaySound id) ]
-                    
+                    { model
+                        | correctSeq = False
+                        , showErr = True
+                        , userSequence = emptyArray
+                        , seqIndex = 0
+                    }
+                        ! [ msgAsCmd (PlaySound id) ]
+
         RemoveActiveClass id ->
             let
                 -- activePad =
@@ -177,8 +184,8 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            ( model, playSequence model.seqIndex model.sequence (Just delay) )
-
+            
+                ( model, playSequence model.seqIndex model.sequence (Just delay) )
 
         PlaySound id ->
             -- let
@@ -193,6 +200,9 @@ update msg model =
                 removeActive =
                     setTimeout (350 * millisecond) (RemoveActiveClass id)
 
+                showError =
+                    not model.correctSeq
+
                 nextIndex =
                     if model.correctSeq then
                         model.seqIndex + 1
@@ -202,7 +212,7 @@ update msg model =
                 cmdBatch =
                     [ (playSound id), removeActive, (sequenceControllerCmd model nextIndex model.count) ]
             in
-                if log "PLAYSOUND openUserInput" (openUserInput model) then
+                if (openUserInput model) then
                     { model | allowInput = True, activePad = newActivePad } ! cmdBatch
                 else
                     { model
@@ -210,6 +220,7 @@ update msg model =
                         , allowInput = False
                         , activePad = newActivePad
                         , correctSeq = True
+                        , showErr = showError
                     }
                         ! cmdBatch
 
@@ -431,15 +442,15 @@ touchpads model =
 
 
 controls : Model -> Html Msg
-controls { count, gameActive, strictMode, correctSeq } =
+controls { count, gameActive, strictMode, showErr } =
     let
         stepCount =
             case count of
                 Just int ->
-                    if correctSeq then
-                        (toString int)
-                    else
+                    if showErr then
                         "X"
+                    else
+                        (toString int)
 
                 Nothing ->
                     "--"
@@ -447,13 +458,12 @@ controls { count, gameActive, strictMode, correctSeq } =
         stepUnit =
             case count of
                 Just int ->
-                    if correctSeq then
-                        if int <= 1 then
-                            "step"
-                        else
-                            "steps"
-                    else
+                    if showErr then
                         "incorrect"
+                    else if int <= 1 then
+                        "step"
+                    else
+                        "steps"
 
                 Nothing ->
                     "press start"
