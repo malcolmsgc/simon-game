@@ -28,7 +28,7 @@ type alias Model =
     , showErr : Bool
     , count : Maybe Int
     , seqIndex : Int
-    , delayFor : Maybe Time --might not be nec
+    , patternComplete : Bool
     }
 
 
@@ -72,7 +72,7 @@ initModel =
     , showErr = False
     , count = Nothing
     , seqIndex = 0
-    , delayFor = Nothing
+    , patternComplete = False
     }
 
 
@@ -102,7 +102,6 @@ init =
 
 type Msg
     = NewGame
-    | UpdateCount
     | PopulateSequence (List Int)
     | ToggleStrict Bool
     | PlaySound Int
@@ -142,19 +141,6 @@ update msg model =
             in
                 ( { model | sequence = sequenceArr }, sequenceControllerCmd model 0 model.count )
 
-        UpdateCount ->
-            case model.count of
-                Just int ->
-                    let
-                        newCount =
-                            int + 1
-                    in
-                        -- need to update sequencecontroller's 1st arg
-                        ( { model | count = Just newCount }, sequenceControllerCmd model 0 (Just newCount) )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
         ToggleStrict isStrict ->
             ( { model | strictMode = (not isStrict) }, Cmd.none )
 
@@ -162,9 +148,20 @@ update msg model =
             let
                 isMatch =
                     validateSequence model
+
+                patternComplete =
+                    patternCompleted model
             in
-                if log "isMatch: " isMatch then
+                if (isMatch && not patternComplete) then
                     update (PlaySound id) model
+                else if (isMatch && patternComplete) then
+                    { model
+                        | patternComplete = True
+                        , count = updateCount model.count
+                        , userSequence = emptyArray
+                        , seqIndex = 0
+                    }
+                        ! [ msgAsCmd (PlaySound id) ]
                 else
                     { model
                         | correctSeq = False
@@ -184,8 +181,7 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            
-                ( model, playSequence model.seqIndex model.sequence (Just delay) )
+            ( model, playSequence model.seqIndex model.sequence (Just delay) )
 
         PlaySound id ->
             -- let
@@ -204,7 +200,9 @@ update msg model =
                     not model.correctSeq
 
                 nextIndex =
-                    if model.correctSeq then
+                    if model.patternComplete then
+                        model.seqIndex
+                    else if model.correctSeq then
                         model.seqIndex + 1
                     else
                         0
@@ -213,7 +211,12 @@ update msg model =
                     [ (playSound id), removeActive, (sequenceControllerCmd model nextIndex model.count) ]
             in
                 if (openUserInput model) then
-                    { model | allowInput = True, activePad = newActivePad } ! cmdBatch
+                    { model
+                        | allowInput = True
+                        , activePad = newActivePad
+                        , patternComplete = False
+                    }
+                        ! cmdBatch
                 else
                     { model
                         | seqIndex = nextIndex
@@ -221,6 +224,7 @@ update msg model =
                         , activePad = newActivePad
                         , correctSeq = True
                         , showErr = showError
+                        , patternComplete = False
                     }
                         ! cmdBatch
 
@@ -309,6 +313,30 @@ validateSequence { count, sequence, userSequence } =
             Array.indexedMap testFunc userSequence
     in
         log "validate" (Array.foldr (\a b -> a && b) True validate)
+
+
+patternCompleted : Model -> Bool
+patternCompleted { count, userSequence } =
+    let
+        countInt =
+            case count of
+                Just int ->
+                    int
+
+                Nothing ->
+                    0
+    in
+        Array.length userSequence >= countInt
+
+
+updateCount : Maybe Int -> Maybe Int
+updateCount count =
+    case count of
+        Just int ->
+            Just (int + 1)
+
+        Nothing ->
+            Nothing
 
 
 
@@ -406,7 +434,8 @@ sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
                 Nothing ->
                     Cmd.none
         else
-            playSequence index sequence (Just 1.5)
+            -- set delay for the reset
+            playSequence index sequence (Just 2)
 
 
 
