@@ -124,13 +124,13 @@ update msg model =
                         { model
                             | sequence = emptyArray
                             , userSequence = emptyArray
-                            , count = Just 2
+                            , count = Just 1
                             , allowInput = False
                             , correctSeq = True
                             , seqIndex = 0
                         }
                     else
-                        { model | gameActive = True, count = Just 2, seqIndex = 0 }
+                        { model | gameActive = True, count = Just 1, seqIndex = 0 }
             in
                 ( newModel, generateSequence newModel )
 
@@ -159,7 +159,7 @@ update msg model =
                         | patternComplete = True
                         , count = updateCount model.count
                         , userSequence = emptyArray
-                        , seqIndex = 0
+                        , seqIndex = -1 --will be incremented to index 0 in PlaySound Msg
                     }
                         ! [ msgAsCmd (PlaySound id) ]
                 else
@@ -181,7 +181,7 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            ( model, playSequence model.seqIndex model.sequence (Just delay) )
+            ( {model | patternComplete = False }, playSequence model.seqIndex model.sequence (Just delay) )
 
         PlaySound id ->
             -- let
@@ -199,10 +199,11 @@ update msg model =
                 showError =
                     not model.correctSeq
 
+                restartPattern = 
+                    log "restartPattern" (model.patternComplete && (model.seqIndex < 0))
+
                 nextIndex =
-                    if model.patternComplete then
-                        model.seqIndex
-                    else if model.correctSeq then
+                    if model.correctSeq then
                         model.seqIndex + 1
                     else
                         0
@@ -224,7 +225,7 @@ update msg model =
                         , activePad = newActivePad
                         , correctSeq = True
                         , showErr = showError
-                        , patternComplete = False
+                        , patternComplete = restartPattern
                     }
                         ! cmdBatch
 
@@ -312,7 +313,7 @@ validateSequence { count, sequence, userSequence } =
         validate =
             Array.indexedMap testFunc userSequence
     in
-        log "validate" (Array.foldr (\a b -> a && b) True validate)
+        (Array.foldr (\a b -> a && b) True validate)
 
 
 patternCompleted : Model -> Bool
@@ -396,14 +397,14 @@ openUserInput : Model -> Bool
 openUserInput { seqIndex, count, correctSeq } =
     let
         indexAdjusted =
-            (log "nexti-Model" seqIndex) + 1
+            seqIndex + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
         if correctSeq then
             case count of
                 Just countInt ->
-                    log "nextadjusted-Model" indexAdjusted >= log "count-Model" countInt
+                    indexAdjusted >= countInt
 
                 -- return True when adjusted index equals current step count
                 Nothing ->
@@ -417,14 +418,15 @@ sequenceControllerCmd : Model -> Int -> Maybe Int -> Cmd Msg
 sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
     let
         indexAdjusted =
-            (log "nexti-CMD" index) + 1
+            index + 1
 
         -- + 1 to adjust to match count's 1 based index
     in
-        if log "sequenceControllerCmd correctSeq" correctSeq then
+           
+        if (correctSeq) then
             case count of
                 Just countInt ->
-                    case (log "nextadjusted-CMD" indexAdjusted <= log "count-CMD" countInt) of
+                    case indexAdjusted <= countInt of
                         True ->
                             generateDelay
 
@@ -471,13 +473,15 @@ touchpads model =
 
 
 controls : Model -> Html Msg
-controls { count, gameActive, strictMode, showErr } =
+controls { count, gameActive, strictMode, showErr, patternComplete } =
     let
         stepCount =
             case count of
                 Just int ->
                     if showErr then
                         "X"
+                    else if patternComplete then
+                        "✓"
                     else
                         (toString int)
 
@@ -489,6 +493,8 @@ controls { count, gameActive, strictMode, showErr } =
                 Just int ->
                     if showErr then
                         "incorrect"
+                    else if patternComplete then
+                        "correct"
                     else if int <= 1 then
                         "step"
                     else
