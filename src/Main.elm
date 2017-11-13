@@ -181,7 +181,7 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            ( {model | patternComplete = False }, playSequence model.seqIndex model.sequence (Just delay) )
+            ( model , playSequence model.seqIndex model.sequence (Just delay) )
 
         PlaySound id ->
             -- let
