@@ -27,8 +27,10 @@ type alias Model =
     , correctSeq : Bool
     , showErr : Bool
     , count : Maybe Int
+    , maxCount : Int
     , seqIndex : Int
     , patternComplete : Bool
+    , gameComplete : Bool
     }
 
 
@@ -71,8 +73,10 @@ initModel =
     , correctSeq = True
     , showErr = False
     , count = Nothing
+    , maxCount = 4
     , seqIndex = 0
     , patternComplete = False
+    , gameComplete = False
     }
 
 
@@ -109,6 +113,7 @@ type Msg
     | TouchpadPress Int
     | ValidateUserSequence Int
     | RemoveActiveClass Int
+    | GameComplete Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -128,9 +133,10 @@ update msg model =
                             , allowInput = False
                             , correctSeq = True
                             , seqIndex = 0
+                            , gameComplete = False
                         }
                     else
-                        { model | gameActive = True, count = Just 1, seqIndex = 0 }
+                        { model | gameActive = True, count = Just 1, seqIndex = 0, gameComplete = False }
             in
                 ( newModel, generateSequence newModel )
 
@@ -157,7 +163,7 @@ update msg model =
                 else if (isMatch && patternComplete) then
                     { model
                         | patternComplete = True
-                        , count = updateCount model.count
+                        , count = updateCount model.maxCount model.count
                         , userSequence = emptyArray
                         , seqIndex = -1 --will be incremented to index 0 in PlaySound Msg
                     }
@@ -181,7 +187,7 @@ update msg model =
                 ( { model | activePad = newActivePad }, Cmd.none )
 
         NextPlaybackDelay delay ->
-            ( model , playSequence model.seqIndex model.sequence (Just delay) )
+            ( model, playSequence model.seqIndex model.sequence (Just delay) )
 
         PlaySound id ->
             -- let
@@ -199,8 +205,8 @@ update msg model =
                 showError =
                     not model.correctSeq
 
-                restartPattern = 
-                    log "restartPattern" (model.patternComplete && (model.seqIndex < 0))
+                restartPattern =
+                    model.patternComplete && (model.seqIndex < 0)
 
                 nextIndex =
                     if model.correctSeq then
@@ -208,10 +214,24 @@ update msg model =
                     else
                         0
 
+                thisCount =
+                    case model.count of
+                        Just int ->
+                            int
+
+                        Nothing ->
+                            0
+
                 cmdBatch =
                     [ (playSound id), removeActive, (sequenceControllerCmd model nextIndex model.count) ]
             in
-                if (openUserInput model) then
+                if ((thisCount > model.maxCount) && model.patternComplete) then
+                    { model
+                        | gameComplete = True
+                        , activePad = newActivePad
+                    }
+                        ! ([ (playSound id), removeActive ] ++ endGameFlash 0.7)
+                else if (openUserInput model) then
                     { model
                         | allowInput = True
                         , activePad = newActivePad
@@ -238,6 +258,13 @@ update msg model =
                     update (ValidateUserSequence id) newModel
                 else
                     ( model, Cmd.none )
+
+        GameComplete padsActive ->
+            let
+                newActivePad =
+                    toggleActiveAllPads model.activePad padsActive
+            in
+                ( { model | activePad = newActivePad, gameComplete = True }, Cmd.none )
 
 
 
@@ -292,6 +319,16 @@ idToPad padrecord id switchTo =
             padrecord
 
 
+toggleActiveAllPads : PadRecord -> Bool -> PadRecord
+toggleActiveAllPads padrecord switchTo =
+    { padrecord
+        | topleft = switchTo
+        , topright = switchTo
+        , bottomleft = switchTo
+        , bottomright = switchTo
+    }
+
+
 validateSequence : Model -> Bool
 validateSequence { count, sequence, userSequence } =
     let
@@ -330,12 +367,16 @@ patternCompleted { count, userSequence } =
         Array.length userSequence >= countInt
 
 
-updateCount : Maybe Int -> Maybe Int
-updateCount count =
+updateCount : Int -> Maybe Int -> Maybe Int
+updateCount maxCount count =
     case count of
         Just int ->
-            Just (int + 1)
+            if int < maxCount then
+                Just (int + 1)
+            else
+                Just (maxCount + 1)
 
+        -- +1 nec to ensure final pattern is played through
         Nothing ->
             Nothing
 
@@ -422,7 +463,6 @@ sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
 
         -- + 1 to adjust to match count's 1 based index
     in
-           
         if (correctSeq) then
             case count of
                 Just countInt ->
@@ -438,6 +478,20 @@ sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
         else
             -- set delay for the reset
             playSequence index sequence (Just 2)
+
+
+endGameFlash : Time -> List (Cmd Msg)
+endGameFlash secs =
+    let
+        flashSpeed =
+            (secs * second)
+    in
+        [ setTimeout (1 * flashSpeed) (GameComplete False)
+        , setTimeout (2 * flashSpeed) (GameComplete True)
+        , setTimeout (3 * flashSpeed) (GameComplete False)
+        , setTimeout (4 * flashSpeed) (GameComplete True)
+        , setTimeout (5 * flashSpeed) (GameComplete False)
+        ]
 
 
 
@@ -473,12 +527,14 @@ touchpads model =
 
 
 controls : Model -> Html Msg
-controls { count, gameActive, strictMode, showErr, patternComplete } =
+controls { count, gameActive, strictMode, showErr, patternComplete, gameComplete } =
     let
         stepCount =
             case count of
                 Just int ->
-                    if showErr then
+                    if gameComplete then
+                        "🏆"
+                    else if showErr then
                         "X"
                     else if patternComplete then
                         "✓"
@@ -491,7 +547,9 @@ controls { count, gameActive, strictMode, showErr, patternComplete } =
         stepUnit =
             case count of
                 Just int ->
-                    if showErr then
+                    if gameComplete then
+                        "well done!"
+                    else if showErr then
                         "incorrect"
                     else if patternComplete then
                         "correct"
@@ -512,7 +570,8 @@ controls { count, gameActive, strictMode, showErr, patternComplete } =
                     "start"
     in
         div [ class "controls" ]
-            [ div [ class "step-count" ] [ text stepCount, span [] [ text stepUnit ] ]
+            [ div [ classList [ ( "step-count", True ), ( "lift", (patternComplete || gameComplete) ) ] ]
+                [ p [] [ text stepCount, span [] [ text stepUnit ] ] ]
             , label []
                 [ text startBtnText
                 , button

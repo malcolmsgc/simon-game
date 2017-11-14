@@ -150,9 +150,15 @@ footer {
                 border-bottom-right-radius: 10%;
                 padding: 0.4em 0em 0.25em 0em;
                 text-align: center;
+                p {
+                    margin: 0;
+                }
                 span {
                     display: block;
                     font-size: 0.4em;
+                }
+                &.lift p {
+                    margin-top: -0.2em;
                 }
             }         
         }  
