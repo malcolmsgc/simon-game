@@ -8,7 +8,6 @@ import Time exposing (Time, millisecond, second)
 import Task
 import Process exposing (sleep)
 import Array exposing (Array)
-import Debug exposing (log)
 
 
 -- import Process
@@ -73,7 +72,7 @@ initModel =
     , correctSeq = True
     , showErr = False
     , count = Nothing
-    , maxCount = 4
+    , maxCount = 20
     , seqIndex = 0
     , patternComplete = False
     , gameComplete = False
@@ -121,22 +120,19 @@ update msg model =
     case msg of
         NewGame ->
             let
-                currentCount =
-                    Array.length model.userSequence
-
                 newModel =
-                    if currentCount > 0 then
-                        { model
-                            | sequence = emptyArray
-                            , userSequence = emptyArray
-                            , count = Just 1
-                            , allowInput = False
-                            , correctSeq = True
-                            , seqIndex = 0
-                            , gameComplete = False
-                        }
-                    else
-                        { model | gameActive = True, count = Just 1, seqIndex = 0, gameComplete = False }
+                    { model
+                        | sequence = emptyArray
+                        , userSequence = emptyArray
+                        , count = Just 1
+                        , allowInput = False
+                        , correctSeq = True
+                        , showErr = False
+                        , seqIndex = 0
+                        , gameActive = True
+                        , patternComplete = False
+                        , gameComplete = False
+                    }
             in
                 ( newModel, generateSequence newModel )
 
@@ -239,15 +235,21 @@ update msg model =
                     }
                         ! cmdBatch
                 else
-                    { model
-                        | seqIndex = nextIndex
-                        , allowInput = False
-                        , activePad = newActivePad
-                        , correctSeq = True
-                        , showErr = showError
-                        , patternComplete = restartPattern
-                    }
-                        ! cmdBatch
+                    case (model.strictMode && showError) of
+                        -- reset game if sequence error in strict mode
+                        True ->
+                            model ! [ (playSound id), removeActive, setTimeout (2.2 * second) NewGame ]
+
+                        False ->
+                            { model
+                                | seqIndex = nextIndex
+                                , allowInput = False
+                                , activePad = newActivePad
+                                , correctSeq = True
+                                , showErr = showError
+                                , patternComplete = restartPattern
+                            }
+                                ! cmdBatch
 
         TouchpadPress id ->
             let
@@ -264,7 +266,7 @@ update msg model =
                 newActivePad =
                     toggleActiveAllPads model.activePad padsActive
             in
-                ( { model | activePad = newActivePad, gameComplete = True }, Cmd.none )
+                ( { model | activePad = newActivePad }, Cmd.none )
 
 
 
@@ -387,10 +389,12 @@ updateCount maxCount count =
 
 
 generateSequence : Model -> Cmd Msg
-generateSequence { sequence } =
+generateSequence { sequence, strictMode } =
     if
-        sequence
+        (sequence
             |> Array.isEmpty
+        )
+            || strictMode
     then
         Random.list 20 (Random.int 1 4)
             |> Random.generate PopulateSequence
@@ -477,7 +481,7 @@ sequenceControllerCmd { correctSeq, strictMode, sequence } index count =
                     Cmd.none
         else
             -- set delay for the reset
-            playSequence index sequence (Just 2)
+            playSequence index sequence (Just 2.2)
 
 
 endGameFlash : Time -> List (Cmd Msg)
@@ -491,6 +495,7 @@ endGameFlash secs =
         , setTimeout (3 * flashSpeed) (GameComplete False)
         , setTimeout (4 * flashSpeed) (GameComplete True)
         , setTimeout (5 * flashSpeed) (GameComplete False)
+        , setTimeout (8 * flashSpeed) (NewGame)
         ]
 
 
